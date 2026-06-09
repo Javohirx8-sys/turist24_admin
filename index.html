@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>turist24.uz — Admin Panel</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--surface:#1a1f2e;--surface2:#242938;--border:rgba(255,255,255,.08);
+  --text:#f0f4f8;--text2:#8899aa;--muted:#4a5568;
+  --green:#22c55e;--green-d:#16a34a;--green-l:rgba(34,197,94,.12);
+  --blue:#3b82f6;--blue-l:rgba(59,130,246,.12);
+  --orange:#f59e0b;--orange-l:rgba(245,158,11,.12);
+  --red:#ef4444;--red-l:rgba(239,68,68,.12);
+  --purple:#a855f7;--purple-l:rgba(168,85,247,.12);
+  --r:14px;--sh:0 4px 24px rgba(0,0,0,.3);
+}
+html,body{height:100%;overflow:hidden;}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);display:flex;}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  width:240px;flex-shrink:0;
+  background:var(--surface);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  height:100vh;overflow:hidden;
+}
+.sb-logo{
+  padding:20px 20px 16px;
+  border-bottom:1px solid var(--border);flex-shrink:0;
+}
+.sb-logo-mark{font-size:20px;font-weight:900;letter-spacing:-.5px;}
+.sb-logo-t{color:var(--text);}
+.sb-logo-24{color:var(--green);}
+.sb-logo-sub{font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);margin-top:3px;}
+.sb-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  background:var(--red-l);border:1px solid rgba(239,68,68,.2);
+  border-radius:6px;padding:3px 8px;margin-top:8px;
+  font-size:10px;font-weight:700;color:var(--red);
+}
+.sb-dot{width:5px;height:5px;border-radius:50%;background:var(--red);animation:blink 1.2s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+.sb-nav{flex:1;overflow-y:auto;padding:10px 10px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+.sb-nav::-webkit-scrollbar{width:3px;}
+.sb-group-label{font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);padding:8px 10px 4px;}
+.sb-item{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 12px;border-radius:10px;cursor:pointer;
+  transition:all .13s;margin-bottom:2px;position:relative;
+}
+.sb-item:hover{background:rgba(255,255,255,.05);}
+.sb-item.active{background:var(--green-l);border:1px solid rgba(34,197,94,.2);}
+.sb-item.active .sb-item-label{color:var(--green);}
+.sb-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:55%;background:var(--green);border-radius:0 3px 3px 0;}
+.sb-item-ico{font-size:18px;flex-shrink:0;}
+.sb-item-label{font-size:13px;font-weight:600;color:var(--text2);}
+.sb-item-badge{margin-left:auto;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:var(--red-l);color:var(--red);flex-shrink:0;}
+.sb-item-badge.green{background:var(--green-l);color:var(--green);}
+
+.sb-user{
+  padding:14px 16px;border-top:1px solid var(--border);flex-shrink:0;
+  display:flex;align-items:center;gap:10px;
+}
+.sb-user-ava{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--blue));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.sb-user-name{font-size:13px;font-weight:700;color:var(--text);}
+.sb-user-role{font-size:10px;color:var(--muted);}
+
+/* ── MAIN ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+
+/* TOPBAR */
+.topbar{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:14px 24px;display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;
+}
+.topbar-title{font-size:18px;font-weight:800;color:var(--text);}
+.topbar-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+.topbar-actions{display:flex;gap:10px;align-items:center;}
+.tb-btn{
+  display:flex;align-items:center;gap:6px;
+  padding:8px 16px;border-radius:10px;border:1px solid var(--border);
+  background:var(--surface2);color:var(--text2);
+  font-size:12px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;
+  transition:all .13s;
+}
+.tb-btn:hover{background:rgba(255,255,255,.08);color:var(--text);}
+.tb-btn.primary{background:var(--green);border-color:var(--green);color:#000;font-weight:700;}
+.tb-btn.primary:hover{background:var(--green-d);}
+.online-pill{
+  display:flex;align-items:center;gap:6px;
+  background:var(--green-l);border:1px solid rgba(34,197,94,.2);
+  border-radius:50px;padding:6px 12px;
+  font-size:12px;font-weight:700;color:var(--green);
+}
+.online-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 1.5s infinite;}
+
+/* CONTENT AREA */
+.content{flex:1;overflow-y:auto;padding:24px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+.content::-webkit-scrollbar{width:4px;}
+.content::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+.page{display:none;}
+.page.active{display:block;}
+
+/* ── STATS GRID ── */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;}
+.stat-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);padding:20px;position:relative;overflow:hidden;
+}
+.stat-card::before{content:'';position:absolute;top:-20px;right:-20px;width:80px;height:80px;border-radius:50%;opacity:.08;}
+.stat-card.green::before{background:var(--green);}
+.stat-card.blue::before{background:var(--blue);}
+.stat-card.orange::before{background:var(--orange);}
+.stat-card.purple::before{background:var(--purple);}
+.stat-ico{font-size:24px;margin-bottom:10px;}
+.stat-val{font-size:28px;font-weight:900;color:var(--text);font-family:'DM Mono',monospace;}
+.stat-lbl{font-size:12px;color:var(--muted);margin-top:4px;}
+.stat-delta{font-size:11px;font-weight:700;margin-top:6px;}
+.stat-delta.up{color:var(--green);}
+.stat-delta.dn{color:var(--red);}
+
+/* ── CHARTS ROW ── */
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;}
+.chart-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:16px;}
+.chart-bars{display:flex;align-items:flex-end;gap:6px;height:80px;}
+.chart-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.chart-bar{width:100%;border-radius:4px 4px 0 0;background:var(--green);transition:height .3s;min-height:4px;}
+.chart-bar-lbl{font-size:9px;color:var(--muted);text-align:center;}
+
+/* ── LIVE MAP PLACEHOLDER ── */
+.map-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);padding:0;overflow:hidden;margin-bottom:24px;
+}
+.map-hdr{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.map-hdr-title{font-size:14px;font-weight:700;color:var(--text);}
+.map-body{height:280px;position:relative;background:var(--surface2);}
+.map-body iframe{width:100%;height:100%;border:0;}
+.map-pins{position:absolute;inset:0;pointer-events:none;}
+.map-pin{position:absolute;transform:translate(-50%,-100%);}
+.map-pin-dot{width:12px;height:12px;border-radius:50%;background:var(--green);box-shadow:0 0 0 4px rgba(34,197,94,.3);animation:blink 1.5s infinite;}
+.map-pin-lbl{background:rgba(0,0,0,.75);color:#fff;font-size:9px;padding:2px 6px;border-radius:4px;margin-top:2px;white-space:nowrap;text-align:center;}
+
+/* ── TABLE ── */
+.table-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:24px;}
+.table-hdr{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.table-hdr-title{font-size:14px;font-weight:700;color:var(--text);}
+.search-input{
+  background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+  padding:7px 12px;font-size:12px;color:var(--text);font-family:'Inter',sans-serif;
+  outline:none;width:220px;
+}
+.search-input:focus{border-color:rgba(34,197,94,.4);}
+.table{width:100%;border-collapse:collapse;}
+.table th{text-align:left;padding:10px 16px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+.table td{padding:12px 16px;font-size:13px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle;}
+.table tr:hover td{background:rgba(255,255,255,.02);}
+.table tr:last-child td{border-bottom:none;}
+.status-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;}
+.status-badge.online{background:var(--green-l);color:var(--green);}
+.status-badge.offline{background:var(--muted);color:#fff;opacity:.6;}
+.action-btn{background:transparent;border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;color:var(--text2);cursor:pointer;font-family:'Inter',sans-serif;transition:all .12s;}
+.action-btn:hover{background:var(--surface2);color:var(--text);}
+.action-btn.edit{border-color:rgba(59,130,246,.3);color:var(--blue);}
+.action-btn.del{border-color:rgba(239,68,68,.3);color:var(--red);}
+
+/* ── EDITOR ── */
+.editor-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;}
+.editor-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
+.editor-hdr{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.editor-hdr-title{font-size:13px;font-weight:700;color:var(--text);}
+.editor-body{padding:16px 18px;display:flex;flex-direction:column;gap:12px;}
+.field-label{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;}
+.field-input{
+  width:100%;background:var(--surface2);border:1.5px solid var(--border);
+  border-radius:10px;padding:10px 13px;color:var(--text);
+  font-family:'Inter',sans-serif;font-size:13px;outline:none;
+}
+.field-input:focus{border-color:rgba(34,197,94,.4);}
+textarea.field-input{resize:none;min-height:80px;line-height:1.5;}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.save-btn{
+  background:var(--green);border:none;border-radius:10px;padding:10px 20px;
+  font-size:13px;font-weight:700;color:#000;cursor:pointer;font-family:'Inter',sans-serif;
+  transition:transform .1s;align-self:flex-start;
+}
+.save-btn:active{transform:scale(.96);}
+.saved-tag{font-size:11px;color:var(--green);font-weight:600;display:none;align-items:center;gap:4px;}
+.saved-tag.show{display:flex;}
+
+/* ── NOTIFICATIONS ── */
+.notif-compose{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:24px;}
+.notif-preview{
+  background:var(--surface2);border-radius:12px;padding:14px;
+  display:flex;align-items:flex-start;gap:12px;margin-top:16px;
+}
+.notif-icon{font-size:28px;}
+.notif-title-p{font-size:14px;font-weight:700;color:var(--text);}
+.notif-body-p{font-size:12px;color:var(--text2);margin-top:3px;line-height:1.4;}
+.send-btn{
+  background:var(--blue);border:none;border-radius:10px;padding:11px 24px;
+  font-size:13px;font-weight:700;color:#fff;cursor:pointer;font-family:'Inter',sans-serif;
+  transition:all .13s;margin-top:14px;
+}
+.send-btn:hover{background:#2563eb;}
+
+/* ── SLIDE EDITOR ── */
+.slide-list{display:flex;flex-direction:column;gap:10px;}
+.slide-row{
+  background:var(--surface2);border:1px solid var(--border);border-radius:12px;
+  padding:14px 16px;display:flex;align-items:center;gap:14px;
+}
+.slide-num{width:28px;height:28px;border-radius:8px;background:var(--green-l);color:var(--green);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.slide-preview{width:60px;height:40px;border-radius:8px;object-fit:cover;background:var(--surface);flex-shrink:0;}
+.slide-info{flex:1;min-width:0;}
+.slide-title-txt{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.slide-url-txt{font-size:10px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.slide-actions{display:flex;gap:6px;flex-shrink:0;}
+
+/* ── TOAST ── */
+.admin-toast{position:fixed;bottom:24px;right:24px;background:var(--green);color:#000;padding:12px 20px;border-radius:12px;font-size:13px;font-weight:700;box-shadow:var(--sh);transform:translateY(80px);opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);z-index:999;}
+.admin-toast.show{transform:translateY(0);opacity:1;}
+
+/* ── RESPONSIVE ── */
+@media(max-width:1100px){.stats-grid{grid-template-columns:repeat(2,1fr);}  .charts-row{grid-template-columns:1fr;}}
+@media(max-width:768px){
+  .sidebar{display:none;}
+  .stats-grid{grid-template-columns:1fr 1fr;}
+  .editor-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sb-logo">
+    <div class="sb-logo-mark"><span class="sb-logo-t">turist</span><span class="sb-logo-24">24</span>.uz</div>
+    <div class="sb-logo-sub">Admin Panel</div>
+    <div class="sb-badge"><div class="sb-dot"></div>ADMIN</div>
+  </div>
+
+  <div class="sb-nav">
+    <div class="sb-group-label">Asosiy</div>
+    <div class="sb-item active" onclick="showPage('dashboard',this)">
+      <span class="sb-item-ico">📊</span>
+      <span class="sb-item-label">Dashboard</span>
+    </div>
+    <div class="sb-item" onclick="showPage('users',this)">
+      <span class="sb-item-ico">👥</span>
+      <span class="sb-item-label">Foydalanuvchilar</span>
+      <span class="sb-item-badge" id="sb-online-count">0</span>
+    </div>
+    <div class="sb-item" onclick="showPage('map',this)">
+      <span class="sb-item-ico">🗺️</span>
+      <span class="sb-item-label">Xarita (Live)</span>
+    </div>
+
+    <div class="sb-group-label">Kontent</div>
+    <div class="sb-item" onclick="showPage('banners',this)">
+      <span class="sb-item-ico">🖼️</span>
+      <span class="sb-item-label">Bannerlar</span>
+    </div>
+    <div class="sb-item" onclick="showPage('services',this)">
+      <span class="sb-item-ico">⚙️</span>
+      <span class="sb-item-label">Xizmatlar</span>
+    </div>
+    <div class="sb-item" onclick="showPage('bozor',this)">
+      <span class="sb-item-ico">🛒</span>
+      <span class="sb-item-label">Bozor narxlari</span>
+    </div>
+    <div class="sb-item" onclick="showPage('choyxona',this)">
+      <span class="sb-item-ico">🍵</span>
+      <span class="sb-item-label">Choyxonalar</span>
+    </div>
+
+    <div class="sb-group-label">Boshqaruv</div>
+    <div class="sb-item" onclick="showPage('notifications',this)">
+      <span class="sb-item-ico">🔔</span>
+      <span class="sb-item-label">Bildirishnomalar</span>
+    </div>
+    <div class="sb-item" onclick="showPage('sos',this)">
+      <span class="sb-item-ico">🆘</span>
+      <span class="sb-item-label">SOS Signallar</span>
+      <span class="sb-item-badge" id="sb-sos-count">0</span>
+    </div>
+    <div class="sb-item" onclick="showPage('settings',this)">
+      <span class="sb-item-ico">🔧</span>
+      <span class="sb-item-label">Sozlamalar</span>
+    </div>
+  </div>
+
+  <div class="sb-user">
+    <div class="sb-user-ava">👤</div>
+    <div>
+      <div class="sb-user-name">Admin</div>
+      <div class="sb-user-role">turist24.uz</div>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN AREA -->
+<div class="main">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div>
+      <div class="topbar-title" id="page-title">Dashboard</div>
+      <div class="topbar-sub" id="page-sub">Real vaqt statistikasi</div>
+    </div>
+    <div class="topbar-actions">
+      <div class="online-pill">
+        <div class="online-dot"></div>
+        <span id="online-count">0</span> ta online
+      </div>
+      <button class="tb-btn" onclick="refreshAll()">🔄 Yangilash</button>
+      <button class="tb-btn primary" onclick="adminToast('✅ Saqlandi!')">💾 Saqlash</button>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- ── DASHBOARD ── -->
+    <div class="page active" id="page-dashboard">
+      <div class="stats-grid">
+        <div class="stat-card green">
+          <div class="stat-ico">👥</div>
+          <div class="stat-val" id="stat-total">0</div>
+          <div class="stat-lbl">Jami foydalanuvchilar</div>
+          <div class="stat-delta up" id="stat-total-d">↑ yuklanmoqda...</div>
+        </div>
+        <div class="stat-card blue">
+          <div class="stat-ico">🟢</div>
+          <div class="stat-val" id="stat-online">0</div>
+          <div class="stat-lbl">Hozir online</div>
+          <div class="stat-delta up">↑ real vaqt</div>
+        </div>
+        <div class="stat-card orange">
+          <div class="stat-ico">🆘</div>
+          <div class="stat-val" id="stat-sos">0</div>
+          <div class="stat-lbl">SOS signallar</div>
+          <div class="stat-delta" id="stat-sos-d" style="color:var(--orange)">bugun</div>
+        </div>
+        <div class="stat-card purple">
+          <div class="stat-ico">🛒</div>
+          <div class="stat-val" id="stat-orders">0</div>
+          <div class="stat-lbl">Bron va haridlar</div>
+          <div class="stat-delta up">↑ bugun</div>
+        </div>
+      </div>
+
+      <!-- Mini chart -->
+      <div class="charts-row">
+        <div class="chart-card">
+          <div class="chart-title">Haftalik tashrif (demo)</div>
+          <div class="chart-bars" id="chart-visits"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Xizmatlar qo'llanilishi</div>
+          <div id="chart-services" style="display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
+      </div>
+
+      <!-- Recent activity -->
+      <div class="table-card">
+        <div class="table-hdr">
+          <div class="table-hdr-title">So'nggi faoliyat</div>
+          <div style="font-size:12px;color:var(--muted)">Real vaqt yangilanadi</div>
+        </div>
+        <table class="table">
+          <thead><tr>
+            <th>Foydalanuvchi ID</th>
+            <th>Harakat</th>
+            <th>Vaqt</th>
+            <th>Joylashuv</th>
+            <th>Holat</th>
+          </tr></thead>
+          <tbody id="activity-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── USERS ── -->
+    <div class="page" id="page-users">
+      <div class="table-card">
+        <div class="table-hdr">
+          <div class="table-hdr-title">Foydalanuvchilar</div>
+          <input class="search-input" id="user-search" placeholder="🔍 ID yoki ism..." oninput="filterUsers(this.value)">
+        </div>
+        <table class="table">
+          <thead><tr>
+            <th>ID</th><th>Ism</th><th>Qurilma</th><th>Oxirgi faoliyat</th><th>Holat</th><th>Amal</th>
+          </tr></thead>
+          <tbody id="users-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── MAP ── -->
+    <div class="page" id="page-map">
+      <div class="map-card">
+        <div class="map-hdr">
+          <div class="map-hdr-title">🗺️ Foydalanuvchilar joylashuvi (real vaqt)</div>
+          <div class="online-pill"><div class="online-dot"></div><span id="map-online">0</span> ta online</div>
+        </div>
+        <div class="map-body">
+          <iframe id="admin-map" src="https://maps.google.com/maps?q=41.2974,69.6796&z=12&output=embed" allowfullscreen loading="lazy"></iframe>
+          <div class="map-pins" id="map-pins"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── BANNERS ── -->
+    <div class="page" id="page-banners">
+      <div class="table-card" style="margin-bottom:20px;">
+        <div class="table-hdr">
+          <div class="table-hdr-title">🖼️ Reklama bannerlari</div>
+          <button class="tb-btn primary" onclick="addSlide()">+ Yangi banner</button>
+        </div>
+        <div style="padding:16px 18px;">
+          <div class="slide-list" id="slide-list"></div>
+        </div>
+      </div>
+
+      <!-- Banner editor -->
+      <div class="editor-card">
+        <div class="editor-hdr">
+          <div class="editor-hdr-title">✏️ Banner tahrirlash</div>
+          <div class="saved-tag" id="banner-saved">✓ Saqlandi</div>
+        </div>
+        <div class="editor-body">
+          <div>
+            <div class="field-label">Banner raqami</div>
+            <select class="field-input" id="edit-slide-num" onchange="loadSlideEdit(this.value)">
+              <option value="1">Banner 1</option>
+              <option value="2">Banner 2</option>
+              <option value="3">Banner 3</option>
+              <option value="4">Banner 4</option>
+              <option value="5">Banner 5</option>
+            </select>
+          </div>
+          <div class="field-row">
+            <div>
+              <div class="field-label">Sarlavha</div>
+              <input class="field-input" id="edit-slide-title" placeholder="Banner sarlavhasi">
+            </div>
+            <div>
+              <div class="field-label">Belgi (badge)</div>
+              <input class="field-input" id="edit-slide-badge" placeholder="Aksiya">
+            </div>
+          </div>
+          <div>
+            <div class="field-label">Tavsif matni</div>
+            <textarea class="field-input" id="edit-slide-desc" placeholder="Banner tavsifi..."></textarea>
+          </div>
+          <div>
+            <div class="field-label">Rasm URL (Unsplash)</div>
+            <input class="field-input" id="edit-slide-img" placeholder="https://images.unsplash.com/...">
+          </div>
+          <div>
+            <div class="field-label">CTA tugma matni</div>
+            <input class="field-input" id="edit-slide-cta" placeholder="Ko'proq bilish →">
+          </div>
+          <button class="save-btn" onclick="saveBanner()">💾 Saqlash</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SERVICES ── -->
+    <div class="page" id="page-services">
+      <div class="editor-grid">
+        <div class="editor-card">
+          <div class="editor-hdr"><div class="editor-hdr-title">🚕 Taxi xizmati</div></div>
+          <div class="editor-body">
+            <div><div class="field-label">Xizmat nomi</div><input class="field-input" value="Taxi 1054" id="svc-taxi-name"></div>
+            <div><div class="field-label">Tavsif</div><input class="field-input" value="Tez va qulay taksi xizmati" id="svc-taxi-desc"></div>
+            <div><div class="field-label">Telefon</div><input class="field-input" value="1054" id="svc-taxi-phone"></div>
+            <button class="save-btn" onclick="saveService('taxi')">💾 Saqlash</button>
+          </div>
+        </div>
+        <div class="editor-card">
+          <div class="editor-hdr"><div class="editor-hdr-title">🌿 Eko Turizm</div></div>
+          <div class="editor-body">
+            <div><div class="field-label">Nomi</div><input class="field-input" value="Eko Turizm" id="svc-eco-name"></div>
+            <div><div class="field-label">Tavsif</div><input class="field-input" value="Tabiat qo'ynida dam oling" id="svc-eco-desc"></div>
+            <div><div class="field-label">Koordinata (lat,lng)</div><input class="field-input" value="41.277723,69.709866" id="svc-eco-coord"></div>
+            <button class="save-btn" onclick="saveService('eco')">💾 Saqlash</button>
+          </div>
+        </div>
+        <div class="editor-card">
+          <div class="editor-hdr"><div class="editor-hdr-title">🏥 Shifoxona</div></div>
+          <div class="editor-body">
+            <div><div class="field-label">Nomi</div><input class="field-input" value="Parkent Shifoxonasi" id="svc-hosp-name"></div>
+            <div><div class="field-label">Manzil</div><input class="field-input" value="Parkent, Markaziy ko'cha" id="svc-hosp-addr"></div>
+            <div><div class="field-label">Telefon</div><input class="field-input" value="+998 70 XXX XX XX" id="svc-hosp-phone"></div>
+            <button class="save-btn" onclick="saveService('hosp')">💾 Saqlash</button>
+          </div>
+        </div>
+        <div class="editor-card">
+          <div class="editor-hdr"><div class="editor-hdr-title">📢 Status xabari</div></div>
+          <div class="editor-body">
+            <div><div class="field-label">Status matni</div><input class="field-input" value="Tizim faol · Xizmat ko'rsatishga tayyor" id="status-text"></div>
+            <div><div class="field-label">Rang</div>
+              <select class="field-input" id="status-color">
+                <option value="online">Yashil (ishlaydi)</option>
+                <option value="no-gps">To'q sariq (ogohlantirish)</option>
+                <option value="offline">Kulrang (ishlamaydi)</option>
+              </select>
+            </div>
+            <button class="save-btn" onclick="saveStatus()">💾 Saqlash</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── BOZOR NARXLARI ── -->
+    <div class="page" id="page-bozor">
+      <div class="editor-card">
+        <div class="editor-hdr">
+          <div class="editor-hdr-title">🛒 Bozor narxlarini yangilash</div>
+          <div class="saved-tag" id="bozor-saved">✓ Saqlandi</div>
+        </div>
+        <div class="editor-body">
+          <div>
+            <div class="field-label">Kategoriya</div>
+            <select class="field-input" id="bozor-cat-sel" onchange="loadBozorEdit(this.value)">
+              <option value="sut">🥛 Sut mahsulotlari</option>
+              <option value="gosht">🥩 Go'sht</option>
+              <option value="sabzavot">🥬 Meva-sabzavot</option>
+              <option value="non">🍞 Non</option>
+              <option value="asal">🍯 Asal</option>
+            </select>
+          </div>
+          <div id="bozor-prices-edit"></div>
+          <button class="save-btn" onclick="saveBozorPrices()">💾 Narxlarni yangilash</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CHOYXONALAR ── -->
+    <div class="page" id="page-choyxona">
+      <div class="table-card">
+        <div class="table-hdr">
+          <div class="table-hdr-title">🍵 Choyxonalar boshqaruvi</div>
+          <button class="tb-btn primary">+ Yangi choyxona</button>
+        </div>
+        <table class="table">
+          <thead><tr><th>Nomi</th><th>Kategoriya</th><th>Jami joy</th><th>Band joy</th><th>Reyting</th><th>Amal</th></tr></thead>
+          <tbody id="choy-admin-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── NOTIFICATIONS ── -->
+    <div class="page" id="page-notifications">
+      <div class="notif-compose">
+        <div class="chart-title" style="margin-bottom:16px;">📣 Push bildirishnoma yuborish</div>
+        <div class="field-row" style="margin-bottom:12px;">
+          <div>
+            <div class="field-label">Sarlavha</div>
+            <input class="field-input" id="notif-title" placeholder="Bildirishnoma sarlavhasi" oninput="updateNotifPreview()">
+          </div>
+          <div>
+            <div class="field-label">Kimga yuborish</div>
+            <select class="field-input" id="notif-target">
+              <option>Barcha foydalanuvchilarga</option>
+              <option>Faqat onlinelarga</option>
+              <option>Oila turi</option>
+              <option>So'nggi 7 kun faol</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <div class="field-label">Xabar matni</div>
+          <textarea class="field-input" id="notif-body" placeholder="Bildirishnoma matni..." rows="3" oninput="updateNotifPreview()"></textarea>
+        </div>
+        <div class="notif-preview">
+          <div class="notif-icon">🔔</div>
+          <div>
+            <div class="notif-title-p" id="notif-prev-title">Sarlavha</div>
+            <div class="notif-body-p" id="notif-prev-body">Xabar matni bu yerda ko'rinadi</div>
+          </div>
+        </div>
+        <button class="send-btn" onclick="sendNotification()">📤 Yuborish</button>
+      </div>
+    </div>
+
+    <!-- ── SOS SIGNALLAR ── -->
+    <div class="page" id="page-sos">
+      <div class="table-card">
+        <div class="table-hdr">
+          <div class="table-hdr-title">🆘 SOS Signallar (real vaqt)</div>
+          <div class="online-pill" style="background:var(--red-l);border-color:rgba(239,68,68,.2);">
+            <div class="online-dot" style="background:var(--red)"></div>
+            <span id="sos-active-count">0</span> ta aktiv
+          </div>
+        </div>
+        <table class="table">
+          <thead><tr><th>ID</th><th>Joylashuv</th><th>Vaqt</th><th>Holat</th><th>Amal</th></tr></thead>
+          <tbody id="sos-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── SOZLAMALAR ── -->
+    <div class="page" id="page-settings">
+      <div class="editor-grid">
+        <div class="editor-card">
+          <div class="editor-hdr"><div class="editor-hdr-title">🔐 Admin kirish</div></div>
+          <div class="editor-body">
+            <div><div class="field-label">Admin paroli</div><input class="field-input" type="password" placeholder="Yangi parol" id="new-pass"></div>
+            <div><div class="field-label">Tasdiqlash</div><input class="field-input" type="password" placeholder="Qayta kiriting" id="conf-pass"></div>
+            <button class="save-btn" onclick="changePass()">🔐 O'zgartirish</button>
+          </div>
+        </div>
+        <div class="editor-card">
+          <div class="editor-hdr"><div class="editor-hdr-title">🌐 Sayt sozlamalari</div></div>
+          <div class="editor-body">
+            <div><div class="field-label">Sayt nomi</div><input class="field-input" value="turist24.uz" id="site-name"></div>
+            <div><div class="field-label">Tagline</div><input class="field-input" value="Parkent Tuman Hokimligi" id="site-tagline"></div>
+            <div><div class="field-label">Firebase URL</div><input class="field-input" value="https://bek-bola-default-rtdb.europe-west1.firebasedatabase.app" id="firebase-url"></div>
+            <button class="save-btn" onclick="saveSiteSettings()">💾 Saqlash</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- TOAST -->
+<div class="admin-toast" id="admin-toast"></div>
+
+<script>
+// ── FIREBASE CONFIG ──────────────────────────────────────
+const firebaseConfig = {
+  databaseURL: "https://bek-bola-default-rtdb.europe-west1.firebasedatabase.app"
+};
+try { firebase.initializeApp(firebaseConfig); } catch(e) {}
+const db = typeof firebase !== 'undefined' ? firebase.database() : null;
+
+// ── AUTH ─────────────────────────────────────────────────
+const ADMIN_PASS = localStorage.getItem('t24_admin_pass') || 'admin2024';
+function checkAuth() {
+  const stored = sessionStorage.getItem('t24_admin_auth');
+  if(stored !== 'ok') {
+    const p = prompt('Admin paroli:');
+    if(p !== ADMIN_PASS) {
+      document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0f1117;color:#ef4444;font-size:20px;font-weight:700;">❌ Kirish rad etildi</div>';
+      return false;
+    }
+    sessionStorage.setItem('t24_admin_auth','ok');
+  }
+  return true;
+}
+
+// ── PAGES ────────────────────────────────────────────────
+const PAGE_META = {
+  dashboard:    {title:'Dashboard',           sub:'Real vaqt statistikasi'},
+  users:        {title:'Foydalanuvchilar',    sub:'Barcha roʻyxatdan oʻtgan foydalanuvchilar'},
+  map:          {title:'Xarita (Live)',        sub:'Hozir onlayn boʻlgan foydalanuvchilar'},
+  banners:      {title:'Reklama bannerlari',  sub:'Slayder kontentini tahrirlash'},
+  services:     {title:'Xizmatlar',           sub:'Taxi, eko, shifoxona va boshqalar'},
+  bozor:        {title:'Bozor narxlari',      sub:'Mahsulot narxlarini yangilash'},
+  choyxona:     {title:'Choyxonalar',         sub:'Joy va bron boshqaruvi'},
+  notifications:{title:'Bildirishnomalar',    sub:'Push xabarlar yuborish'},
+  sos:          {title:'SOS Signallar',        sub:'Favqulodda yordam soʻrovlari'},
+  settings:     {title:'Sozlamalar',          sub:'Tizim va admin sozlamalari'},
+};
+
+window.showPage = function(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('active'));
+  const page = document.getElementById('page-'+id);
+  if(page) page.classList.add('active');
+  if(el) el.classList.add('active');
+  const meta = PAGE_META[id] || {};
+  setText('page-title', meta.title || id);
+  setText('page-sub',   meta.sub || '');
+  if(id === 'users')    loadUsers();
+  if(id === 'choyxona') loadChoyAdmin();
+  if(id === 'bozor')    loadBozorEdit('sut');
+  if(id === 'banners')  renderSlidelist();
+  if(id === 'sos')      loadSos();
+};
+
+function setText(id, val) { const e = document.getElementById(id); if(e) e.textContent = val; }
+
+// ── TOAST ────────────────────────────────────────────────
+window.adminToast = function(msg) {
+  const t = document.getElementById('admin-toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+};
+
+// ── FIREBASE REALTIME ────────────────────────────────────
+let usersData = {};
+let sosData   = {};
+let onlineCount = 0;
+
+function initFirebase() {
+  if(!db) { loadMockData(); return; }
+  // Online users
+  db.ref('users').on('value', snap => {
+    usersData = snap.val() || {};
+    const total = Object.keys(usersData).length;
+    const online = Object.values(usersData).filter(u => u.online).length;
+    onlineCount = online;
+    updateOnlineUI(total, online);
+  });
+  // SOS
+  db.ref('murojaatlar').on('value', snap => {
+    sosData = snap.val() || {};
+    const cnt = Object.keys(sosData).length;
+    setText('stat-sos', cnt);
+    setText('sb-sos-count', cnt);
+    setText('sos-active-count', cnt);
+  });
+}
+
+function updateOnlineUI(total, online) {
+  setText('stat-total', total || demoStats.total);
+  setText('stat-online', online || demoStats.online);
+  setText('online-count', online || demoStats.online);
+  setText('sb-online-count', online || demoStats.online);
+  setText('map-online', online || demoStats.online);
+  setText('stat-orders', demoStats.orders);
+}
+
+// Demo data fallback
+const demoStats = { total:247, online:12, orders:34 };
+
+function loadMockData() {
+  updateOnlineUI(demoStats.total, demoStats.online);
+  setText('stat-sos','2');
+  setText('sb-sos-count','2');
+  loadActivityTable();
+  renderCharts();
+}
+
+// ── ACTIVITY TABLE ───────────────────────────────────────
+const DEMO_ACTIVITY = [
+  {id:'T24-M8K2-X3A1', action:'Virtual sayohat koʻrdi',      time:'2 daq oldin', loc:'Parkent kiraverishi', online:true},
+  {id:'T24-N9J1-Y4B2', action:'Choyxona bronladi',           time:'5 daq oldin', loc:'Bahor Fasl Choyxona', online:true},
+  {id:'T24-P1L3-Z5C3', action:'Bozordan soʻradi',           time:'8 daq oldin', loc:'Parkent bozori',      online:true},
+  {id:'T24-Q2M4-A6D4', action:'SOS signal yubordi',           time:'12 daq oldin',loc:'41.29, 69.68',       online:false},
+  {id:'T24-R3N5-B7E5', action:'Eko turizm koʻrdi',          time:'18 daq oldin',loc:'Kumushkon',           online:true},
+  {id:'T24-S4O6-C8F6', action:'Taxi chaqirdi (1054)',         time:'24 daq oldin',loc:'Tuman markazi',      online:false},
+  {id:'T24-T5P7-D9G7', action:'Kunlik reja tuzdi',            time:'31 daq oldin',loc:'Parkent',            online:true},
+];
+
+function loadActivityTable() {
+  const tb = document.getElementById('activity-table');
+  if(!tb) return;
+  tb.innerHTML = DEMO_ACTIVITY.map(r => `
+    <tr>
+      <td><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--green)">${r.id}</span></td>
+      <td>${r.action}</td>
+      <td style="color:var(--muted);font-size:12px">${r.time}</td>
+      <td style="color:var(--text2);font-size:12px">${r.loc}</td>
+      <td><span class="status-badge ${r.online?'online':'offline'}">${r.online?'🟢 Online':'⚪ Offline'}</span></td>
+    </tr>`).join('');
+}
+
+// ── CHARTS ───────────────────────────────────────────────
+function renderCharts() {
+  const bars = document.getElementById('chart-visits');
+  if(!bars) return;
+  const days = ['Du','Se','Ch','Pa','Ju','Sh','Ya'];
+  const vals = [45,62,38,71,89,124,97];
+  const max  = Math.max(...vals);
+  bars.innerHTML = days.map((d,i) => `
+    <div class="chart-bar-wrap">
+      <div class="chart-bar" style="height:${(vals[i]/max)*70}px;background:${i===5?'var(--orange)':'var(--green)'}"></div>
+      <div class="chart-bar-lbl">${d}</div>
+    </div>`).join('');
+
+  const svcs = document.getElementById('chart-services');
+  if(!svcs) return;
+  const services = [
+    {n:'Virtual sayohat', v:45, c:'var(--blue)'},
+    {n:'Choyxona bron', v:32, c:'var(--orange)'},
+    {n:'Taxi', v:28, c:'var(--green)'},
+    {n:'Bozor', v:18, c:'var(--purple)'},
+    {n:'SOS', v:5, c:'var(--red)'},
+  ];
+  svcs.innerHTML = services.map(s => `
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div style="font-size:12px;color:var(--text2);width:120px;flex-shrink:0">${s.n}</div>
+      <div style="flex:1;height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;">
+        <div style="height:100%;width:${s.v}%;background:${s.c};border-radius:4px;"></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);width:30px;text-align:right">${s.v}%</div>
+    </div>`).join('');
+}
+
+// ── USERS TABLE ──────────────────────────────────────────
+const DEMO_USERS = [
+  {id:'T24-M8K2-X3A1', name:'Alisher T.',    device:'iPhone 14',   last:'2 daq oldin', online:true},
+  {id:'T24-N9J1-Y4B2', name:'Nodira X.',     device:'Samsung S23', last:'5 daq oldin', online:true},
+  {id:'T24-P1L3-Z5C3', name:'Sarvar M.',     device:'iPhone 13',   last:'8 daq oldin', online:true},
+  {id:'T24-Q2M4-A6D4', name:'Malika K.',     device:'Xiaomi 12',   last:'1 soat oldin',online:false},
+  {id:'T24-R3N5-B7E5', name:'Botir A.',      device:'iPhone 12',   last:'2 soat oldin',online:false},
+  {id:'T24-S4O6-C8F6', name:'Zulfiya O.',    device:'Huawei P50',  last:'3 soat oldin',online:false},
+  {id:'T24-T5P7-D9G7', name:"Nodir G'.",     device:'Samsung A54', last:'5 soat oldin',online:false},
+];
+
+let filteredUsers = [...DEMO_USERS];
+
+function loadUsers() {
+  renderUsersTable(filteredUsers);
+}
+
+window.filterUsers = function(q) {
+  filteredUsers = DEMO_USERS.filter(u =>
+    u.id.toLowerCase().includes(q.toLowerCase()) ||
+    u.name.toLowerCase().includes(q.toLowerCase())
+  );
+  renderUsersTable(filteredUsers);
+};
+
+function renderUsersTable(users) {
+  const tb = document.getElementById('users-table');
+  if(!tb) return;
+  tb.innerHTML = users.map(u => `
+    <tr>
+      <td><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--green)">${u.id}</span></td>
+      <td style="font-weight:600">${u.name}</td>
+      <td style="color:var(--text2);font-size:12px">${u.device}</td>
+      <td style="color:var(--muted);font-size:12px">${u.last}</td>
+      <td><span class="status-badge ${u.online?'online':'offline'}">${u.online?'🟢 Online':'⚪ Offline'}</span></td>
+      <td style="display:flex;gap:6px;">
+        <button class="action-btn edit" onclick="editUser('${u.id}')">✏️</button>
+        <button class="action-btn" onclick="viewUserMap('${u.id}')">🗺️</button>
+      </td>
+    </tr>`).join('');
+}
+
+window.editUser   = id => adminToast('✏️ Tahrirlash: ' + id);
+window.viewUserMap = id => { showPage('map', document.querySelector('[onclick*="map"]')); adminToast('🗺️ '+id+' xaritada'); };
+
+// ── CHOYXONA ADMIN ───────────────────────────────────────
+const CHOY_ADMIN = [
+  {name:'Bahor Fasl Choyxonasi', cat:'Oila',    total:10, taken:4, rating:'4.8'},
+  {name:'Chinor Soyasi',         cat:'Oila',    total:8,  taken:3, rating:'4.9'},
+  {name:'Zargaron Oshxonasi',    cat:'Oila',    total:15, taken:7, rating:'4.6'},
+  {name:"Doʻstlik Maskani",      cat:'Ulfatlar',total:8,  taken:2, rating:'4.7'},
+  {name:'Buloq Boshi',           cat:'Ulfatlar',total:12, taken:4, rating:'4.9'},
+  {name:"Kumushkon Tog' Choyxonasi",cat:'Ulfatlar',total:10,taken:2,rating:'5.0'},
+];
+
+function loadChoyAdmin() {
+  const tb = document.getElementById('choy-admin-table');
+  if(!tb) return;
+  tb.innerHTML = CHOY_ADMIN.map(c => `
+    <tr>
+      <td style="font-weight:700">${c.name}</td>
+      <td><span style="background:var(--green-l);color:var(--green);padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">${c.cat}</span></td>
+      <td style="text-align:center">${c.total}</td>
+      <td style="text-align:center"><span style="color:var(--orange);font-weight:700">${c.taken}</span></td>
+      <td>⭐ ${c.rating}</td>
+      <td style="display:flex;gap:6px">
+        <button class="action-btn edit" onclick="adminToast('✏️ Tahrirlash')">✏️ Tahrir</button>
+        <button class="action-btn del" onclick="adminToast('🗑️ O\'chirildi')">🗑️</button>
+      </td>
+    </tr>`).join('');
+}
+
+// ── BOZOR EDITOR ─────────────────────────────────────────
+const BOZOR_ITEMS = {
+  sut:     ["Sigir suti","Qatiq","Tvorog","Sariyog'","Qaymoq","Pishloq"],
+  gosht:   ["Mol goʻshti","Qoʻy goʻshti","Tovuq","Baliq","Suxta","Jigar"],
+  sabzavot:["Pomidor","Bodring","Kartoshka","Piyoz","Sabzi","Olma","Oʻrik","Uzum"],
+  non:     ["Tandirda non","Patir","Lavaş","Un","Guruch"],
+  asal:    ["Tog' asali","Quritilgan oʻrik","Mayiz","Yongʻoq"],
+};
+
+window.loadBozorEdit = function(cat) {
+  const el = document.getElementById('bozor-prices-edit');
+  if(!el) return;
+  const items = BOZOR_ITEMS[cat] || [];
+  el.innerHTML = '<div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">' +
+    items.map(name => `
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="font-size:13px;color:var(--text);flex:1;min-width:120px">${name}</div>
+        <input class="field-input" placeholder="Narx (soʻm)" style="width:140px"
+          id="price-${name.replace(/\s/g,'_')}" value="">
+        <select class="field-input" style="width:90px">
+          <option>kg</option><option>litr</option><option>dona</option><option>gram</option>
+        </select>
+      </div>`).join('') + '</div>';
+};
+
+window.saveBozorPrices = function() {
+  const saved = document.getElementById('bozor-saved');
+  if(saved) { saved.classList.add('show'); setTimeout(()=>saved.classList.remove('show'),2500); }
+  adminToast('✅ Narxlar yangilandi!');
+};
+
+// ── BANNER EDITOR ────────────────────────────────────────
+const SLIDE_DATA = [
+  {title:"Kumushkonda 20% chegirma", badge:"Aksiya", desc:"Oila bilan tashrif buyurishingizda katta chegirma!", img:"https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80", cta:"Yoʻnalishni koʻrish →"},
+  {title:"Parkent shashligi", badge:"Gastronomiya", desc:"30 yillik anʻanaviy retsept!", img:"https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&q=80", cta:"Restoranlar →"},
+  {title:"Virtual Sayohat", badge:"Yangi", desc:"Bepul panorama koʻrinishlari!", img:"https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80", cta:"Boshlash →"},
+  {title:"Taxi 1054", badge:"Xizmat", desc:"Istalgan manzilga. Kecha-kunduz.", img:"https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=800&q=80", cta:"Qoʻngʻiroq →"},
+  {title:"Bu joy reklamangiz uchun", badge:"Reklama", desc:"Minglab foydalanuvchiga tanishtiring.", img:"https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800&q=80", cta:"Bogʻlanish →"},
+];
+
+function renderSlidelist() {
+  const el = document.getElementById('slide-list');
+  if(!el) return;
+  el.innerHTML = SLIDE_DATA.map((s,i) => `
+    <div class="slide-row">
+      <div class="slide-num">${i+1}</div>
+      <img class="slide-preview" src="${s.img}" alt="">
+      <div class="slide-info">
+        <div class="slide-title-txt">${s.title}</div>
+        <div class="slide-url-txt">${s.img}</div>
+      </div>
+      <div class="slide-actions">
+        <button class="action-btn edit" onclick="loadSlideEdit(${i+1})">✏️</button>
+        <button class="action-btn" onclick="adminToast('👁️ Ko\'rish')">👁️</button>
+      </div>
+    </div>`).join('');
+}
+
+window.loadSlideEdit = function(num) {
+  const idx = parseInt(num) - 1;
+  const s = SLIDE_DATA[idx];
+  if(!s) return;
+  setValue('edit-slide-num', num);
+  setValue('edit-slide-title', s.title);
+  setValue('edit-slide-badge', s.badge);
+  setValue('edit-slide-desc', s.desc);
+  setValue('edit-slide-img', s.img);
+  setValue('edit-slide-cta', s.cta);
+};
+
+window.saveBanner = function() {
+  const saved = document.getElementById('banner-saved');
+  if(saved) { saved.classList.add('show'); setTimeout(()=>saved.classList.remove('show'),2500); }
+  adminToast('✅ Banner ' + document.getElementById('edit-slide-num').value + ' saqlandi!');
+};
+
+window.addSlide = () => adminToast('+ Yangi banner qoʻshildi (demo)');
+
+function setValue(id, val) { const e = document.getElementById(id); if(e) e.value = val; }
+
+// ── SOS ──────────────────────────────────────────────────
+function loadSos() {
+  const tb = document.getElementById('sos-table');
+  if(!tb) return;
+  const demo = [
+    {id:'T24-Q2M4-A6D4', loc:'41.2963, 69.6803', time:'12 daq oldin', status:'Aktiv'},
+    {id:'T24-U6Q8-E0H8', loc:'41.3089, 69.7441', time:'2 soat oldin', status:'Yopildi'},
+  ];
+  tb.innerHTML = demo.map(s => `
+    <tr>
+      <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--red)">${s.id}</td>
+      <td>${s.loc}</td>
+      <td style="color:var(--muted)">${s.time}</td>
+      <td><span class="status-badge ${s.status==='Aktiv'?'online':'offline'}">${s.status}</span></td>
+      <td style="display:flex;gap:6px">
+        <button class="action-btn" onclick="window.open('https://www.google.com/maps?q=${s.loc}','_blank')">🗺️</button>
+        <button class="action-btn edit" onclick="adminToast('📞 Qo\'ng\'iroq qilinmoqda...')">📞</button>
+      </td>
+    </tr>`).join('');
+}
+
+// ── NOTIFICATIONS ────────────────────────────────────────
+window.updateNotifPreview = function() {
+  setText('notif-prev-title', document.getElementById('notif-title').value || 'Sarlavha');
+  setText('notif-prev-body', document.getElementById('notif-body').value || 'Xabar matni...');
+};
+
+window.sendNotification = function() {
+  const t = document.getElementById('notif-title').value;
+  const b = document.getElementById('notif-body').value;
+  if(!t || !b) { adminToast('⚠️ Sarlavha va matn kiriting!'); return; }
+  adminToast('📤 Bildirishnoma yuborildi!');
+  if(db) db.ref('notifications').push({title:t, body:b, time:Date.now()});
+};
+
+// ── SERVICES ─────────────────────────────────────────────
+window.saveService = id => adminToast('✅ ' + id + ' xizmati saqlandi!');
+window.saveStatus  = () => adminToast('✅ Status saqlandi!');
+window.saveSiteSettings = () => adminToast('✅ Sozlamalar saqlandi!');
+window.changePass  = () => {
+  const p = document.getElementById('new-pass').value;
+  const c = document.getElementById('conf-pass').value;
+  if(!p) return adminToast('⚠️ Parolni kiriting!');
+  if(p !== c) return adminToast('❌ Parollar mos emas!');
+  localStorage.setItem('t24_admin_pass', p);
+  adminToast('✅ Parol oʻzgartirildi!');
+};
+
+window.refreshAll = function() {
+  loadActivityTable(); renderCharts(); adminToast('🔄 Yangilandi!');
+};
+
+// ── INIT ─────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  if(!checkAuth()) return;
+  initFirebase();
+  loadMockData();
+  loadActivityTable();
+  renderCharts();
+  loadSlideEdit(1);
+
+  // Auto-refresh every 30 sec
+  setInterval(() => {
+    if(db) return;
+    const o = demoStats.online + Math.floor(Math.random()*3-1);
+    updateOnlineUI(demoStats.total, Math.max(1, o));
+  }, 30000);
+});
+</script>
+</body>
+</html>

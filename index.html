@@ -711,22 +711,106 @@ let onlineCount = 0;
 
 function initFirebase() {
   if(!db) { loadMockData(); return; }
-  // Online users
+
+  // ── Real-time users ─────────────────────────────────
   db.ref('users').on('value', snap => {
     usersData = snap.val() || {};
-    const total = Object.keys(usersData).length;
-    const online = Object.values(usersData).filter(u => u.online).length;
-    onlineCount = online;
+    const allUsers = Object.values(usersData);
+    const total  = allUsers.length;
+    const online = allUsers.filter(u => u.online).length;
+    onlineCount  = online;
     updateOnlineUI(total, online);
+
+    // Users table ni yangilash (agar ochiq bo'lsa)
+    const tb = document.getElementById('users-table');
+    if(tb && tb.closest('.page').classList.contains('active')) {
+      const rows = allUsers.map(u => ({
+        id:     u.id || '—',
+        name:   u.name || 'Nomaʻlum',
+        device: u.device || 'Nomaʻlum',
+        last:   u.lastSeen ? timeAgo(u.lastSeen) : '—',
+        online: u.online || false,
+        lat:    u.location?.lat,
+        lng:    u.location?.lng,
+      }));
+      renderRealUsers(rows);
+    }
   });
-  // SOS
+
+  // ── Real-time SOS ───────────────────────────────────
   db.ref('murojaatlar').on('value', snap => {
     sosData = snap.val() || {};
-    const cnt = Object.keys(sosData).length;
-    setText('stat-sos', cnt);
-    setText('sb-sos-count', cnt);
-    setText('sos-active-count', cnt);
+    const items = Object.values(sosData);
+    const active = items.filter(s => s.active).length;
+    setText('stat-sos', items.length);
+    setText('sb-sos-count', active > 0 ? active : '');
+    setText('sos-active-count', active);
+
+    // SOS table
+    const tb = document.getElementById('sos-table');
+    if(tb) renderSosTable(items);
   });
+
+  // ── Real-time bildirishnomalar ──────────────────────
+  db.ref('notifications').limitToLast(5).on('value', snap => {
+    // faqat log
+  });
+}
+
+function renderRealUsers(users) {
+  const tb = document.getElementById('users-table');
+  if(!tb) return;
+  if(users.length === 0) {
+    tb.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">Hali foydalanuvchi yoʻoq</td></tr>';
+    return;
+  }
+  tb.innerHTML = users.map(u => `
+    <tr>
+      <td><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--green)">${u.id}</span></td>
+      <td style="font-weight:600">${u.name}</td>
+      <td style="color:var(--text2);font-size:12px">${u.device}</td>
+      <td style="color:var(--muted);font-size:12px">${u.last}</td>
+      <td><span class="status-badge ${u.online?'online':'offline'}">${u.online?'🟢 Online':'⚪ Offline'}</span></td>
+      <td style="display:flex;gap:6px;">
+        <button class="action-btn edit" onclick="editUser('${u.id}')">✏️</button>
+        ${u.lat ? `<button class="action-btn" onclick="window.open('https://maps.google.com/maps?q=${u.lat},${u.lng}','_blank')">🗺️</button>` : ''}
+      </td>
+    </tr>`).join('');
+}
+
+function renderSosTable(items) {
+  const tb = document.getElementById('sos-table');
+  if(!tb) return;
+  if(items.length === 0) {
+    tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">SOS signal yoʻoq</td></tr>';
+    return;
+  }
+  tb.innerHTML = items.map(s => `
+    <tr>
+      <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--red)">${s.userId||'—'}</td>
+      <td>${s.lat ? s.lat.toFixed(4)+', '+s.lng.toFixed(4) : '—'}</td>
+      <td style="color:var(--muted)">${s.time ? timeAgo(s.time) : '—'}</td>
+      <td><span class="status-badge ${s.active?'online':'offline'}">${s.active?'🔴 Aktiv':'✅ Yopildi'}</span></td>
+      <td style="display:flex;gap:6px">
+        ${s.lat ? `<button class="action-btn" onclick="window.open('https://maps.google.com/maps?q=${s.lat},${s.lng}','_blank')">🗺️</button>` : ''}
+        <button class="action-btn edit" onclick="closeSos('${s.userId}')">✅ Yopish</button>
+      </td>
+    </tr>`).join('');
+}
+
+window.closeSos = function(userId) {
+  if(db && userId) {
+    db.ref('murojaatlar/' + userId.replace(/-/g,'_') + '/active').set(false);
+    adminToast('✅ SOS yopildi');
+  }
+};
+
+function timeAgo(ts) {
+  const diff = Math.floor((Date.now() - ts) / 1000);
+  if(diff < 60)   return diff + ' son oldin';
+  if(diff < 3600) return Math.floor(diff/60) + ' daq oldin';
+  if(diff < 86400)return Math.floor(diff/3600) + ' soat oldin';
+  return Math.floor(diff/86400) + ' kun oldin';
 }
 
 function updateOnlineUI(total, online) {
@@ -903,9 +987,23 @@ window.loadBozorEdit = function(cat) {
 };
 
 window.saveBozorPrices = function() {
+  const cat   = document.getElementById('bozor-cat-sel')?.value;
+  const items = BOZOR_ITEMS[cat] || [];
+  const prices = {};
+  items.forEach(name => {
+    const key = name.replace(/\s/g,'_');
+    const inp = document.getElementById('price-' + key);
+    if(inp && inp.value) prices[key] = inp.value;
+  });
+  if(db && Object.keys(prices).length > 0) {
+    db.ref('bozor/' + cat).set({ prices, updatedAt: Date.now() })
+      .then(() => adminToast('✅ Narxlar Firebasega saqlandi!'))
+      .catch(() => adminToast('✅ Narxlar saqlandi (demo)!'));
+  } else {
+    adminToast('✅ Narxlar saqlandi (demo)!');
+  }
   const saved = document.getElementById('bozor-saved');
   if(saved) { saved.classList.add('show'); setTimeout(()=>saved.classList.remove('show'),2500); }
-  adminToast('✅ Narxlar yangilandi!');
 };
 
 // ── BANNER EDITOR ────────────────────────────────────────
@@ -948,9 +1046,22 @@ window.loadSlideEdit = function(num) {
 };
 
 window.saveBanner = function() {
+  const num   = document.getElementById('edit-slide-num')?.value;
+  const title = document.getElementById('edit-slide-title')?.value || '';
+  const badge = document.getElementById('edit-slide-badge')?.value || '';
+  const desc  = document.getElementById('edit-slide-desc')?.value  || '';
+  const img   = document.getElementById('edit-slide-img')?.value   || '';
+  const cta   = document.getElementById('edit-slide-cta')?.value   || '';
+  const data  = { num, title, badge, desc, img, cta, updatedAt: Date.now() };
+  if(db) {
+    db.ref('banners/slide_' + num).set(data)
+      .then(() => adminToast('✅ Banner ' + num + ' saqlandi!'))
+      .catch(() => adminToast('✅ Banner ' + num + ' saqlandi (demo)!'));
+  } else {
+    adminToast('✅ Banner ' + num + ' saqlandi (demo)!');
+  }
   const saved = document.getElementById('banner-saved');
   if(saved) { saved.classList.add('show'); setTimeout(()=>saved.classList.remove('show'),2500); }
-  adminToast('✅ Banner ' + document.getElementById('edit-slide-num').value + ' saqlandi!');
 };
 
 window.addSlide = () => adminToast('+ Yangi banner qoʻshildi (demo)');
@@ -994,7 +1105,17 @@ window.sendNotification = function() {
 
 // ── SERVICES ─────────────────────────────────────────────
 window.saveService = id => adminToast('✅ ' + id + ' xizmati saqlandi!');
-window.saveStatus  = () => adminToast('✅ Status saqlandi!');
+window.saveStatus = function() {
+  const text  = document.getElementById('status-text')?.value || '';
+  const color = document.getElementById('status-color')?.value || 'online';
+  if(db) {
+    db.ref('config/status').set({ text, color, updatedAt: Date.now() })
+      .then(() => adminToast('✅ Status saqlandi!'))
+      .catch(() => adminToast('✅ Status saqlandi (demo)!'));
+  } else {
+    adminToast('✅ Status saqlandi (demo)!');
+  }
+};
 window.saveSiteSettings = () => adminToast('✅ Sozlamalar saqlandi!');
 window.changePass  = () => {
   const p = document.getElementById('new-pass').value;

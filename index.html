@@ -710,7 +710,7 @@ let sosData   = {};
 let onlineCount = 0;
 
 function initFirebase() {
-  if(!db) { loadMockData(); return; }
+  if(!db) { loadEmptyState(); return; }
 
   // ── Real-time users ─────────────────────────────────
   db.ref('users').on('value', snap => {
@@ -755,6 +755,46 @@ function initFirebase() {
   db.ref('notifications').limitToLast(5).on('value', snap => {
     // faqat log
   });
+
+  // ── Real-time faoliyat (users dan hosil qilinadi) ───
+  db.ref('users').on('value', snap => {
+    const u = snap.val() || {};
+    renderActivityFromUsers(u);
+  });
+
+  // ── Bron/buyurtmalar soni ───────────────────────────
+  db.ref('orders').on('value', snap => {
+    const orders = snap.val() || {};
+    setText('stat-orders', Object.keys(orders).length);
+  });
+}
+
+function renderActivityFromUsers(usersObj) {
+  const tb = document.getElementById('activity-table');
+  if(!tb) return;
+  const list = Object.entries(usersObj)
+    .map(([key, u]) => ({ key, ...u }))
+    .filter(u => u.lastSeen)
+    .sort((a,b) => (b.lastSeen||0) - (a.lastSeen||0))
+    .slice(0, 15);
+
+  if(list.length === 0) {
+    tb.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">'
+      + 'Hali hech kim saytga kirmagan. Foydalanuvchi turist24.uz saytiga kirganda shu yerda ko\u02bbrinadi.</td></tr>';
+    return;
+  }
+
+  tb.innerHTML = list.map(u => {
+    const loc = u.location ? (u.location.lat.toFixed(4) + ', ' + u.location.lng.toFixed(4)) : 'Nomaʻlum';
+    return `
+    <tr>
+      <td><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--green)">${u.id || u.key}</span></td>
+      <td>${u.online ? 'Saytda faol' : 'Sayt tashrifi'}</td>
+      <td style="color:var(--muted);font-size:12px">${timeAgo(u.lastSeen)}</td>
+      <td style="color:var(--text2);font-size:12px">${loc}</td>
+      <td><span class="status-badge ${u.online?'online':'offline'}">${u.online?'🟢 Online':'⚪ Offline'}</span></td>
+    </tr>`;
+  }).join('');
 }
 
 function renderRealUsers(users) {
@@ -814,74 +854,71 @@ function timeAgo(ts) {
 }
 
 function updateOnlineUI(total, online) {
-  setText('stat-total', total || demoStats.total);
-  setText('stat-online', online || demoStats.online);
-  setText('online-count', online || demoStats.online);
-  setText('sb-online-count', online || demoStats.online);
-  setText('map-online', online || demoStats.online);
-  setText('stat-orders', demoStats.orders);
+  setText('stat-total', total);
+  setText('stat-online', online);
+  setText('online-count', online);
+  setText('sb-online-count', online);
+  setText('map-online', online);
 }
 
-// Demo data fallback
-const demoStats = { total:247, online:12, orders:34 };
-
-function loadMockData() {
-  updateOnlineUI(demoStats.total, demoStats.online);
-  setText('stat-sos','2');
-  setText('sb-sos-count','2');
-  loadActivityTable();
-  renderCharts();
+// Firebase ulanmagan holat — boʻsh holat koʻrsatiladi
+function loadEmptyState() {
+  updateOnlineUI(0, 0);
+  setText('stat-sos', '0');
+  setText('sb-online-count', '0');
+  renderRealUsers([]);
+  renderSosTable([]);
+  renderActivityFromUsers({});
+  const warn = document.getElementById('fb-warning');
+  if(warn) warn.style.display = 'flex';
 }
 
-// ── ACTIVITY TABLE ───────────────────────────────────────
-const DEMO_ACTIVITY = [
-  {id:'T24-M8K2-X3A1', action:'Virtual sayohat koʻrdi',      time:'2 daq oldin', loc:'Parkent kiraverishi', online:true},
-  {id:'T24-N9J1-Y4B2', action:'Choyxona bronladi',           time:'5 daq oldin', loc:'Bahor Fasl Choyxona', online:true},
-  {id:'T24-P1L3-Z5C3', action:'Bozordan soʻradi',           time:'8 daq oldin', loc:'Parkent bozori',      online:true},
-  {id:'T24-Q2M4-A6D4', action:'SOS signal yubordi',           time:'12 daq oldin',loc:'41.29, 69.68',       online:false},
-  {id:'T24-R3N5-B7E5', action:'Eko turizm koʻrdi',          time:'18 daq oldin',loc:'Kumushkon',           online:true},
-  {id:'T24-S4O6-C8F6', action:'Taxi chaqirdi (1054)',         time:'24 daq oldin',loc:'Tuman markazi',      online:false},
-  {id:'T24-T5P7-D9G7', action:'Kunlik reja tuzdi',            time:'31 daq oldin',loc:'Parkent',            online:true},
-];
-
-function loadActivityTable() {
-  const tb = document.getElementById('activity-table');
-  if(!tb) return;
-  tb.innerHTML = DEMO_ACTIVITY.map(r => `
-    <tr>
-      <td><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--green)">${r.id}</span></td>
-      <td>${r.action}</td>
-      <td style="color:var(--muted);font-size:12px">${r.time}</td>
-      <td style="color:var(--text2);font-size:12px">${r.loc}</td>
-      <td><span class="status-badge ${r.online?'online':'offline'}">${r.online?'🟢 Online':'⚪ Offline'}</span></td>
-    </tr>`).join('');
-}
-
-// ── CHARTS ───────────────────────────────────────────────
+// ── CHARTS — haqiqiy maʻlumotdan ─────────────────────
 function renderCharts() {
   const bars = document.getElementById('chart-visits');
   if(!bars) return;
+
+  // Haftalik tashrif — usersData dan kunlar boʻyicha hisoblanadi
   const days = ['Du','Se','Ch','Pa','Ju','Sh','Ya'];
-  const vals = [45,62,38,71,89,124,97];
-  const max  = Math.max(...vals);
+  const counts = [0,0,0,0,0,0,0];
+  const allUsers = Object.values(usersData || {});
+  const now = new Date();
+
+  allUsers.forEach(u => {
+    if(!u.createdAt && !u.lastSeen) return;
+    const ts = u.lastSeen || (typeof u.createdAt === 'string' ? new Date(u.createdAt).getTime() : u.createdAt);
+    if(!ts) return;
+    const d = new Date(ts);
+    const diffDays = Math.floor((now - d) / 86400000);
+    if(diffDays >= 0 && diffDays < 7) {
+      const dayIdx = (d.getDay() === 0) ? 6 : d.getDay() - 1;
+      counts[dayIdx]++;
+    }
+  });
+
+  const max = Math.max(...counts, 1);
   bars.innerHTML = days.map((d,i) => `
     <div class="chart-bar-wrap">
-      <div class="chart-bar" style="height:${(vals[i]/max)*70}px;background:${i===5?'var(--orange)':'var(--green)'}"></div>
+      <div class="chart-bar" style="height:${Math.max((counts[i]/max)*70, counts[i]>0?6:2)}px;background:${counts[i]>0?'var(--green)':'var(--border)'}"></div>
       <div class="chart-bar-lbl">${d}</div>
     </div>`).join('');
 
+  // Xizmatlar — bu yerga keyinchalik real event tracking qoʻshiladi
   const svcs = document.getElementById('chart-services');
   if(!svcs) return;
+  if(allUsers.length === 0) {
+    svcs.innerHTML = '<div style="font-size:12px;color:var(--muted);text-align:center;padding:20px 0">Maʻlumot yoʻoq</div>';
+    return;
+  }
+  const onlineCnt  = allUsers.filter(u => u.online).length;
+  const offlineCnt = allUsers.length - onlineCnt;
   const services = [
-    {n:'Virtual sayohat', v:45, c:'var(--blue)'},
-    {n:'Choyxona bron', v:32, c:'var(--orange)'},
-    {n:'Taxi', v:28, c:'var(--green)'},
-    {n:'Bozor', v:18, c:'var(--purple)'},
-    {n:'SOS', v:5, c:'var(--red)'},
+    {n:'Online foydalanuvchi',  v: allUsers.length ? Math.round(onlineCnt/allUsers.length*100) : 0, c:'var(--green)'},
+    {n:'Offline foydalanuvchi', v: allUsers.length ? Math.round(offlineCnt/allUsers.length*100) : 0, c:'var(--muted)'},
   ];
   svcs.innerHTML = services.map(s => `
     <div style="display:flex;align-items:center;gap:8px;">
-      <div style="font-size:12px;color:var(--text2);width:120px;flex-shrink:0">${s.n}</div>
+      <div style="font-size:12px;color:var(--text2);width:150px;flex-shrink:0">${s.n}</div>
       <div style="flex:1;height:8px;background:var(--surface2);border-radius:4px;overflow:hidden;">
         <div style="height:100%;width:${s.v}%;background:${s.c};border-radius:4px;"></div>
       </div>
@@ -890,49 +927,34 @@ function renderCharts() {
 }
 
 // ── USERS TABLE ──────────────────────────────────────────
-const DEMO_USERS = [
-  {id:'T24-M8K2-X3A1', name:'Alisher T.',    device:'iPhone 14',   last:'2 daq oldin', online:true},
-  {id:'T24-N9J1-Y4B2', name:'Nodira X.',     device:'Samsung S23', last:'5 daq oldin', online:true},
-  {id:'T24-P1L3-Z5C3', name:'Sarvar M.',     device:'iPhone 13',   last:'8 daq oldin', online:true},
-  {id:'T24-Q2M4-A6D4', name:'Malika K.',     device:'Xiaomi 12',   last:'1 soat oldin',online:false},
-  {id:'T24-R3N5-B7E5', name:'Botir A.',      device:'iPhone 12',   last:'2 soat oldin',online:false},
-  {id:'T24-S4O6-C8F6', name:'Zulfiya O.',    device:'Huawei P50',  last:'3 soat oldin',online:false},
-  {id:'T24-T5P7-D9G7', name:"Nodir G'.",     device:'Samsung A54', last:'5 soat oldin',online:false},
-];
-
-let filteredUsers = [...DEMO_USERS];
+let allRealUsers = [];
 
 function loadUsers() {
-  renderUsersTable(filteredUsers);
+  if(usersData) {
+    allRealUsers = Object.entries(usersData).map(([key,u]) => ({key, ...u}));
+    renderRealUsers(formatUsersForTable(allRealUsers));
+  }
+}
+
+function formatUsersForTable(list) {
+  return list.map(u => ({
+    id:     u.id || u.key,
+    name:   u.name || 'Nomaʻlum',
+    device: u.device || 'Nomaʻlum',
+    last:   u.lastSeen ? timeAgo(u.lastSeen) : '—',
+    online: u.online || false,
+    lat:    u.location?.lat,
+    lng:    u.location?.lng,
+  }));
 }
 
 window.filterUsers = function(q) {
-  filteredUsers = DEMO_USERS.filter(u =>
-    u.id.toLowerCase().includes(q.toLowerCase()) ||
-    u.name.toLowerCase().includes(q.toLowerCase())
+  const filtered = allRealUsers.filter(u =>
+    (u.id||'').toLowerCase().includes(q.toLowerCase()) ||
+    (u.name||'').toLowerCase().includes(q.toLowerCase())
   );
-  renderUsersTable(filteredUsers);
+  renderRealUsers(formatUsersForTable(filtered));
 };
-
-function renderUsersTable(users) {
-  const tb = document.getElementById('users-table');
-  if(!tb) return;
-  tb.innerHTML = users.map(u => `
-    <tr>
-      <td><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--green)">${u.id}</span></td>
-      <td style="font-weight:600">${u.name}</td>
-      <td style="color:var(--text2);font-size:12px">${u.device}</td>
-      <td style="color:var(--muted);font-size:12px">${u.last}</td>
-      <td><span class="status-badge ${u.online?'online':'offline'}">${u.online?'🟢 Online':'⚪ Offline'}</span></td>
-      <td style="display:flex;gap:6px;">
-        <button class="action-btn edit" onclick="editUser('${u.id}')">✏️</button>
-        <button class="action-btn" onclick="viewUserMap('${u.id}')">🗺️</button>
-      </td>
-    </tr>`).join('');
-}
-
-window.editUser   = id => adminToast('✏️ Tahrirlash: ' + id);
-window.viewUserMap = id => { showPage('map', document.querySelector('[onclick*="map"]')); adminToast('🗺️ '+id+' xaritada'); };
 
 // ── CHOYXONA ADMIN ───────────────────────────────────────
 const CHOY_ADMIN = [
@@ -1127,24 +1149,47 @@ window.changePass  = () => {
 };
 
 window.refreshAll = function() {
-  loadActivityTable(); renderCharts(); adminToast('🔄 Yangilandi!');
+  renderCharts();
+  if(usersData) renderActivityFromUsers(usersData);
+  adminToast('🔄 Yangilandi!');
+};
+
+window.editUser = function(id) {
+  const u = allRealUsers.find(x => (x.id||x.key) === id);
+  if(!u) { adminToast('Foydalanuvchi topilmadi'); return; }
+  const newName = prompt('Foydalanuvchi ismi:', u.name || '');
+  if(newName !== null && db) {
+    db.ref('users/' + u.key + '/name').set(newName);
+    adminToast('✅ Ism yangilandi: ' + newName);
+  }
+};
+
+window.viewUserMap = function(id) {
+  const u = allRealUsers.find(x => (x.id||x.key) === id);
+  if(u && u.location) {
+    window.open('https://maps.google.com/maps?q=' + u.location.lat + ',' + u.location.lng, '_blank');
+  } else {
+    adminToast('Joylashuv maʻlumoti yoʻoq');
+  }
 };
 
 // ── INIT ─────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   if(!checkAuth()) return;
-  initFirebase();
-  loadMockData();
-  loadActivityTable();
+
+  if(!db) {
+    loadEmptyState();
+    const warn = document.createElement('div');
+    warn.id = 'fb-warning';
+    warn.style.cssText = 'position:fixed;top:16px;right:16px;background:var(--red-l);border:1px solid rgba(239,68,68,.3);color:var(--red);padding:10px 16px;border-radius:10px;font-size:12px;font-weight:700;z-index:998;display:flex;align-items:center;gap:6px;';
+    warn.innerHTML = '⚠️ Firebase ulanmadi — internetni tekshiring';
+    document.body.appendChild(warn);
+  } else {
+    initFirebase();
+  }
+
   renderCharts();
   loadSlideEdit(1);
-
-  // Auto-refresh every 30 sec
-  setInterval(() => {
-    if(db) return;
-    const o = demoStats.online + Math.floor(Math.random()*3-1);
-    updateOnlineUI(demoStats.total, Math.max(1, o));
-  }, 30000);
 });
 </script>
 </body>

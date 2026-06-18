@@ -440,24 +440,41 @@ textarea.field-input{resize:none;min-height:80px;line-height:1.5;}
           <div class="saved-tag" id="banner-saved">✓ Saqlandi</div>
         </div>
         <div class="editor-body">
-          <div>
-            <div class="field-label">Banner raqami</div>
-            <select class="field-input" id="edit-slide-num" onchange="loadSlideEdit(this.value)">
-              <option value="1">Banner 1</option>
-              <option value="2">Banner 2</option>
-              <option value="3">Banner 3</option>
-              <option value="4">Banner 4</option>
-              <option value="5">Banner 5</option>
-            </select>
+          <div class="field-row">
+            <div>
+              <div class="field-label">Banner raqami</div>
+              <select class="field-input" id="edit-slide-num" onchange="loadSlideEdit(this.value)">
+                <option value="1">Banner 1</option>
+                <option value="2">Banner 2</option>
+                <option value="3">Banner 3</option>
+                <option value="4">Banner 4</option>
+                <option value="5">Banner 5</option>
+                <option value="6">Banner 6 (yangi)</option>
+              </select>
+            </div>
+            <div>
+              <div class="field-label">Emoji (deco)</div>
+              <input class="field-input" id="edit-slide-deco" placeholder="🌿" maxlength="4">
+            </div>
           </div>
           <div class="field-row">
             <div>
-              <div class="field-label">Sarlavha</div>
-              <input class="field-input" id="edit-slide-title" placeholder="Banner sarlavhasi">
+              <div class="field-label">Yuqori burchak yorlig'i</div>
+              <input class="field-input" id="edit-slide-tag" placeholder="Yangilik / Reklama">
             </div>
             <div>
               <div class="field-label">Belgi (badge)</div>
-              <input class="field-input" id="edit-slide-badge" placeholder="Aksiya">
+              <input class="field-input" id="edit-slide-badge" placeholder="Aksiya · Bahor 2026">
+            </div>
+          </div>
+          <div class="field-row">
+            <div>
+              <div class="field-label">Sarlavha (oddiy qism)</div>
+              <input class="field-input" id="edit-slide-title" placeholder="Kumushkonda">
+            </div>
+            <div>
+              <div class="field-label">Sarlavha (qalin, em)</div>
+              <input class="field-input" id="edit-slide-titleem" placeholder="20% chegirma">
             </div>
           </div>
           <div>
@@ -468,11 +485,26 @@ textarea.field-input{resize:none;min-height:80px;line-height:1.5;}
             <div class="field-label">Rasm URL (Unsplash)</div>
             <input class="field-input" id="edit-slide-img" placeholder="https://images.unsplash.com/...">
           </div>
-          <div>
-            <div class="field-label">CTA tugma matni</div>
-            <input class="field-input" id="edit-slide-cta" placeholder="Ko'proq bilish →">
+          <div class="field-row">
+            <div>
+              <div class="field-label">CTA tugma matni</div>
+              <input class="field-input" id="edit-slide-cta" placeholder="Ko'proq bilish →">
+            </div>
+            <div>
+              <div class="field-label">CTA harakat (JS funksiya)</div>
+              <select class="field-input" id="edit-slide-ctaaction">
+                <option value="">Hech narsa (faqat matn)</option>
+                <option value="goEco()">Eko Turizm sahifasi</option>
+                <option value="openVirtualTour()">Virtual Sayohat</option>
+                <option value="callTaxi()">Taxi chaqirish</option>
+                <option value="openPlan()">Kunlik Reja</option>
+                <option value="openChoyxona()">Choyxonalar</option>
+                <option value="openBozor()">Bozor</option>
+                <option value="near('restaurant')">Restoranlar</option>
+              </select>
+            </div>
           </div>
-          <button class="save-btn" onclick="saveBanner()">💾 Saqlash</button>
+          <button class="save-btn" onclick="saveBanner()">💾 Saqlash va saytga yuborish</button>
         </div>
       </div>
     </div>
@@ -650,6 +682,9 @@ const firebaseConfig = {
 try { firebase.initializeApp(firebaseConfig); } catch(e) {}
 const db = typeof firebase !== 'undefined' ? firebase.database() : null;
 
+// Global real-time state
+let LIVE_BANNERS = {};
+
 // ── AUTH ─────────────────────────────────────────────────
 const ADMIN_PASS = localStorage.getItem('t24_admin_pass') || 'admin2024';
 function checkAuth() {
@@ -693,7 +728,55 @@ window.showPage = function(id, el) {
   if(id === 'bozor')    loadBozorEdit('sut');
   if(id === 'banners')  renderSlidelist();
   if(id === 'sos')      loadSos();
+  if(id === 'services') loadServicesFromFirebase();
+  if(id === 'settings') loadSiteSettingsFromFirebase();
 };
+
+function loadServicesFromFirebase() {
+  if(!db) return;
+  db.ref('services/taxi').once('value').then(snap => {
+    const d = snap.val();
+    if(d) {
+      setValue('svc-taxi-name', d.name);
+      setValue('svc-taxi-desc', d.desc);
+      setValue('svc-taxi-phone', d.phone);
+    }
+  });
+  db.ref('services/eco').once('value').then(snap => {
+    const d = snap.val();
+    if(d) {
+      setValue('svc-eco-name', d.name);
+      setValue('svc-eco-desc', d.desc);
+      setValue('svc-eco-coord', d.coord);
+    }
+  });
+  db.ref('services/hosp').once('value').then(snap => {
+    const d = snap.val();
+    if(d) {
+      setValue('svc-hosp-name', d.name);
+      setValue('svc-hosp-addr', d.addr);
+      setValue('svc-hosp-phone', d.phone);
+    }
+  });
+  db.ref('config/status').once('value').then(snap => {
+    const d = snap.val();
+    if(d) {
+      setValue('status-text', d.text);
+      setValue('status-color', d.color);
+    }
+  });
+}
+
+function loadSiteSettingsFromFirebase() {
+  if(!db) return;
+  db.ref('config/site').once('value').then(snap => {
+    const d = snap.val();
+    if(d) {
+      setValue('site-name', d.name);
+      setValue('site-tagline', d.tagline);
+    }
+  });
+}
 
 function setText(id, val) { const e = document.getElementById(id); if(e) e.textContent = val; }
 
@@ -766,6 +849,13 @@ function initFirebase() {
   db.ref('orders').on('value', snap => {
     const orders = snap.val() || {};
     setText('stat-orders', Object.keys(orders).length);
+  });
+
+  // ── Bannerlar real vaqtda ────────────────────────────
+  db.ref('banners').on('value', snap => {
+    LIVE_BANNERS = snap.val() || {};
+    const slideList = document.getElementById('slide-list');
+    if(slideList) renderSlidelist();
   });
 }
 
@@ -1028,62 +1118,100 @@ window.saveBozorPrices = function() {
   if(saved) { saved.classList.add('show'); setTimeout(()=>saved.classList.remove('show'),2500); }
 };
 
-// ── BANNER EDITOR ────────────────────────────────────────
-const SLIDE_DATA = [
-  {title:"Kumushkonda 20% chegirma", badge:"Aksiya", desc:"Oila bilan tashrif buyurishingizda katta chegirma!", img:"https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80", cta:"Yoʻnalishni koʻrish →"},
-  {title:"Parkent shashligi", badge:"Gastronomiya", desc:"30 yillik anʻanaviy retsept!", img:"https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&q=80", cta:"Restoranlar →"},
-  {title:"Virtual Sayohat", badge:"Yangi", desc:"Bepul panorama koʻrinishlari!", img:"https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80", cta:"Boshlash →"},
-  {title:"Taxi 1054", badge:"Xizmat", desc:"Istalgan manzilga. Kecha-kunduz.", img:"https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=800&q=80", cta:"Qoʻngʻiroq →"},
-  {title:"Bu joy reklamangiz uchun", badge:"Reklama", desc:"Minglab foydalanuvchiga tanishtiring.", img:"https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800&q=80", cta:"Bogʻlanish →"},
+// ── BANNER EDITOR (Firebase bilan to'liq ulangan) ────────
+const FALLBACK_BANNERS = [
+  {tag:"Yangilik", deco:"🌿", title:"Kumushkonda", titleEm:"20% chegirma", badge:"Aksiya · Bahor 2026", desc:"Oila bilan tashrif buyurishingizda katta chegirma!", img:"https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80", cta:"Yo\u02bbnalishni ko\u02bbrish →", ctaAction:"goEco()"},
+  {tag:"Reklama", deco:"🍢", title:"Parkent shashligi —", titleEm:"haqiqiy ta\u02bbm", badge:"Gastronomiya", desc:"30 yillik an\u02bbanaviy retsept!", img:"https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&q=80", cta:"Restoranlar →", ctaAction:"near('restaurant')"},
+  {tag:"Yangi", deco:"🌐", title:"Parkentni uydan", titleEm:"kashf eting", badge:"360° Virtual Sayohat", desc:"Bepul panorama ko\u02bbrinishlari!", img:"https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80", cta:"Boshlash →", ctaAction:"openVirtualTour()"},
+  {tag:"Xizmat", deco:"🚕", title:"Taxi 1054 —", titleEm:"tez va qulay", badge:"24/7 Parkent taxi", desc:"Istalgan manzilga. Kecha-kunduz.", img:"https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=800&q=80", cta:"Qo\u02bbng\u02bbiroq →", ctaAction:"callTaxi()"},
+  {tag:"", deco:"📢", title:"Bu joy sizning", titleEm:"reklamangiz uchun", badge:"Reklama joyi", desc:"Minglab foydalanuvchiga tanishtiring.", img:"https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800&q=80", cta:"Bog\u02bblanish →", ctaAction:""},
 ];
+
+function getBannerData(num) {
+  const key = 'slide_' + num;
+  if(LIVE_BANNERS[key]) return LIVE_BANNERS[key];
+  const idx = parseInt(num) - 1;
+  return FALLBACK_BANNERS[idx] || { tag:'', deco:'📷', title:'', titleEm:'', badge:'', desc:'', img:'', cta:'', ctaAction:'' };
+}
 
 function renderSlidelist() {
   const el = document.getElementById('slide-list');
   if(!el) return;
-  el.innerHTML = SLIDE_DATA.map((s,i) => `
+  const nums = [1,2,3,4,5,6];
+  el.innerHTML = nums.map(num => {
+    const s = getBannerData(num);
+    if(!s.img && !s.title) return '';
+    const isLive = !!LIVE_BANNERS['slide_'+num];
+    return `
     <div class="slide-row">
-      <div class="slide-num">${i+1}</div>
-      <img class="slide-preview" src="${s.img}" alt="">
+      <div class="slide-num">${num}</div>
+      <img class="slide-preview" src="${s.img}" alt="" onerror="this.style.opacity=0.3">
       <div class="slide-info">
-        <div class="slide-title-txt">${s.title}</div>
-        <div class="slide-url-txt">${s.img}</div>
+        <div class="slide-title-txt">${s.title || '(boʻsh)'} ${s.titleEm||''} ${isLive ? '<span style="color:var(--green);font-size:9px;font-weight:700;margin-left:6px;">●LIVE</span>' : '<span style="color:var(--muted);font-size:9px;margin-left:6px;">demo</span>'}</div>
+        <div class="slide-url-txt">${s.img||'rasm yoʻq'}</div>
       </div>
       <div class="slide-actions">
-        <button class="action-btn edit" onclick="loadSlideEdit(${i+1})">✏️</button>
-        <button class="action-btn" onclick="adminToast('👁️ Ko\'rish')">👁️</button>
+        <button class="action-btn edit" onclick="loadSlideEdit(${num})">✏️</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 window.loadSlideEdit = function(num) {
-  const idx = parseInt(num) - 1;
-  const s = SLIDE_DATA[idx];
-  if(!s) return;
+  const s = getBannerData(num);
   setValue('edit-slide-num', num);
-  setValue('edit-slide-title', s.title);
-  setValue('edit-slide-badge', s.badge);
-  setValue('edit-slide-desc', s.desc);
-  setValue('edit-slide-img', s.img);
-  setValue('edit-slide-cta', s.cta);
+  setValue('edit-slide-deco', s.deco || '');
+  setValue('edit-slide-tag', s.tag || '');
+  setValue('edit-slide-badge', s.badge || '');
+  setValue('edit-slide-title', s.title || '');
+  setValue('edit-slide-titleem', s.titleEm || '');
+  setValue('edit-slide-desc', s.desc || '');
+  setValue('edit-slide-img', s.img || '');
+  setValue('edit-slide-cta', s.cta || '');
+  setValue('edit-slide-ctaaction', s.ctaAction || '');
 };
 
 window.saveBanner = function() {
-  const num   = document.getElementById('edit-slide-num')?.value;
-  const title = document.getElementById('edit-slide-title')?.value || '';
-  const badge = document.getElementById('edit-slide-badge')?.value || '';
-  const desc  = document.getElementById('edit-slide-desc')?.value  || '';
-  const img   = document.getElementById('edit-slide-img')?.value   || '';
-  const cta   = document.getElementById('edit-slide-cta')?.value   || '';
-  const data  = { num, title, badge, desc, img, cta, updatedAt: Date.now() };
+  const num       = document.getElementById('edit-slide-num')?.value;
+  const deco      = document.getElementById('edit-slide-deco')?.value || '';
+  const tag       = document.getElementById('edit-slide-tag')?.value || '';
+  const badge     = document.getElementById('edit-slide-badge')?.value || '';
+  const title     = document.getElementById('edit-slide-title')?.value || '';
+  const titleEm   = document.getElementById('edit-slide-titleem')?.value || '';
+  const desc      = document.getElementById('edit-slide-desc')?.value  || '';
+  const img       = document.getElementById('edit-slide-img')?.value   || '';
+  const cta       = document.getElementById('edit-slide-cta')?.value   || '';
+  const ctaAction = document.getElementById('edit-slide-ctaaction')?.value || '';
+
+  if(!title && !img) {
+    adminToast('⚠️ Kamida sarlavha yoki rasm kiriting!');
+    return;
+  }
+
+  const data = { deco, tag, badge, title, titleEm, desc, img, cta, ctaAction, updatedAt: Date.now() };
+
   if(db) {
     db.ref('banners/slide_' + num).set(data)
-      .then(() => adminToast('✅ Banner ' + num + ' saqlandi!'))
-      .catch(() => adminToast('✅ Banner ' + num + ' saqlandi (demo)!'));
+      .then(() => {
+        adminToast('✅ Banner ' + num + ' saytga yuborildi!');
+      })
+      .catch((err) => {
+        adminToast('❌ Xato: Firebase ulanmadi');
+        console.error(err);
+      });
   } else {
-    adminToast('✅ Banner ' + num + ' saqlandi (demo)!');
+    adminToast('⚠️ Firebase ulanmagan — saqlanmadi');
   }
+
   const saved = document.getElementById('banner-saved');
   if(saved) { saved.classList.add('show'); setTimeout(()=>saved.classList.remove('show'),2500); }
+};
+
+window.deleteBanner = function(num) {
+  if(!db) return;
+  if(!confirm('Banner ' + num + ' ni o\u02bbchirishni xohlaysizmi?')) return;
+  db.ref('banners/slide_' + num).remove()
+    .then(() => { adminToast('🗑️ Banner ' + num + ' o\u02bbchirildi'); renderSlidelist(); });
 };
 
 window.addSlide = () => adminToast('+ Yangi banner qoʻshildi (demo)');
@@ -1126,7 +1254,36 @@ window.sendNotification = function() {
 };
 
 // ── SERVICES ─────────────────────────────────────────────
-window.saveService = id => adminToast('✅ ' + id + ' xizmati saqlandi!');
+window.saveService = function(id) {
+  if(!db) { adminToast('⚠️ Firebase ulanmagan'); return; }
+  let data = {};
+
+  if(id === 'taxi') {
+    data = {
+      name:  document.getElementById('svc-taxi-name')?.value  || '',
+      desc:  document.getElementById('svc-taxi-desc')?.value  || '',
+      phone: document.getElementById('svc-taxi-phone')?.value || '',
+    };
+  } else if(id === 'eco') {
+    data = {
+      name:  document.getElementById('svc-eco-name')?.value  || '',
+      desc:  document.getElementById('svc-eco-desc')?.value  || '',
+      coord: document.getElementById('svc-eco-coord')?.value || '',
+    };
+  } else if(id === 'hosp') {
+    data = {
+      name:  document.getElementById('svc-hosp-name')?.value  || '',
+      addr:  document.getElementById('svc-hosp-addr')?.value  || '',
+      phone: document.getElementById('svc-hosp-phone')?.value || '',
+    };
+  }
+
+  data.updatedAt = Date.now();
+
+  db.ref('services/' + id).set(data)
+    .then(() => adminToast('✅ ' + id + ' xizmati saytga yuborildi!'))
+    .catch(() => adminToast('❌ Xato: saqlanmadi'));
+};
 window.saveStatus = function() {
   const text  = document.getElementById('status-text')?.value || '';
   const color = document.getElementById('status-color')?.value || 'online';
@@ -1138,7 +1295,17 @@ window.saveStatus = function() {
     adminToast('✅ Status saqlandi (demo)!');
   }
 };
-window.saveSiteSettings = () => adminToast('✅ Sozlamalar saqlandi!');
+window.saveSiteSettings = function() {
+  if(!db) { adminToast('⚠️ Firebase ulanmagan'); return; }
+  const data = {
+    name:    document.getElementById('site-name')?.value    || 'turist24.uz',
+    tagline: document.getElementById('site-tagline')?.value || '',
+    updatedAt: Date.now(),
+  };
+  db.ref('config/site').set(data)
+    .then(() => adminToast('✅ Sayt sozlamalari yuborildi!'))
+    .catch(() => adminToast('❌ Xato: saqlanmadi'));
+};
 window.changePass  = () => {
   const p = document.getElementById('new-pass').value;
   const c = document.getElementById('conf-pass').value;

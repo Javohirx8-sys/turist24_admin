@@ -440,50 +440,93 @@ textarea.field-input{resize:none;min-height:80px;line-height:1.5;}
           <div class="saved-tag" id="banner-saved">✓ Saqlandi</div>
         </div>
         <div class="editor-body">
+          <!-- LIVE PREVIEW -->
+          <div id="banner-preview" style="
+            height:140px;border-radius:14px;overflow:hidden;position:relative;
+            background:#1a2233 center/cover no-repeat;display:flex;flex-direction:column;
+            justify-content:flex-end;padding:14px;border:1px solid var(--border);
+          ">
+            <div id="bp-overlay" style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.1),rgba(0,0,0,.65));"></div>
+            <div style="position:relative;z-index:1;">
+              <div id="bp-badge" style="font-size:10px;font-weight:700;color:#fff;background:rgba(255,255,255,.15);
+                display:inline-block;padding:3px 9px;border-radius:50px;margin-bottom:6px;">Belgi</div>
+              <div id="bp-title" style="font-size:17px;font-weight:800;line-height:1.2;"><span id="bp-title-text">Sarlavha</span> <em id="bp-titleem" style="font-style:normal;background:rgba(255,255,255,.18);border-radius:4px;padding:0 4px;">qalin qism</em></div>
+              <div id="bp-desc" style="font-size:11px;margin-top:4px;opacity:.85;">Tavsif matni shu yerda ko'rinadi</div>
+            </div>
+          </div>
           <div class="field-row">
             <div>
               <div class="field-label">Banner raqami</div>
               <select class="field-input" id="edit-slide-num" onchange="loadSlideEdit(this.value)">
-                <option value="1">Banner 1</option>
-                <option value="2">Banner 2</option>
-                <option value="3">Banner 3</option>
-                <option value="4">Banner 4</option>
-                <option value="5">Banner 5</option>
-                <option value="6">Banner 6 (yangi)</option>
+                <!-- JS orqali dinamik to'ldiriladi -->
               </select>
             </div>
             <div>
               <div class="field-label">Emoji (deco)</div>
-              <input class="field-input" id="edit-slide-deco" placeholder="🌿" maxlength="4">
+              <input class="field-input" id="edit-slide-deco" placeholder="🌿" maxlength="4" oninput="updateBannerPreview()">
             </div>
           </div>
           <div class="field-row">
             <div>
               <div class="field-label">Yuqori burchak yorlig'i</div>
-              <input class="field-input" id="edit-slide-tag" placeholder="Yangilik / Reklama">
+              <input class="field-input" id="edit-slide-tag" placeholder="Yangilik / Reklama" oninput="updateBannerPreview()">
             </div>
             <div>
               <div class="field-label">Belgi (badge)</div>
-              <input class="field-input" id="edit-slide-badge" placeholder="Aksiya · Bahor 2026">
+              <input class="field-input" id="edit-slide-badge" placeholder="Aksiya · Bahor 2026" oninput="updateBannerPreview()">
             </div>
           </div>
           <div class="field-row">
             <div>
               <div class="field-label">Sarlavha (oddiy qism)</div>
-              <input class="field-input" id="edit-slide-title" placeholder="Kumushkonda">
+              <input class="field-input" id="edit-slide-title" placeholder="Kumushkonda" oninput="updateBannerPreview()">
             </div>
             <div>
               <div class="field-label">Sarlavha (qalin, em)</div>
-              <input class="field-input" id="edit-slide-titleem" placeholder="20% chegirma">
+              <input class="field-input" id="edit-slide-titleem" placeholder="20% chegirma" oninput="updateBannerPreview()">
             </div>
           </div>
           <div>
             <div class="field-label">Tavsif matni</div>
-            <textarea class="field-input" id="edit-slide-desc" placeholder="Banner tavsifi..."></textarea>
+            <textarea class="field-input" id="edit-slide-desc" placeholder="Banner tavsifi..." oninput="updateBannerPreview()"></textarea>
           </div>
           <div>
-            <div class="field-label">Rasm URL (Unsplash)</div>
-            <input class="field-input" id="edit-slide-img" placeholder="https://images.unsplash.com/...">
+            <div class="field-label">Rasm</div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input class="field-input" id="edit-slide-img" placeholder="https://images.unsplash.com/... yoki kompyuterdan tanlang" style="flex:1" oninput="updateBannerPreview()">
+              <label for="banner-file-input" style="
+                background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+                padding:10px 16px;font-size:12px;font-weight:700;color:var(--text2);
+                cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .13s;
+              " onmouseover="this.style.background='rgba(255,255,255,.08)'" onmouseout="this.style.background='var(--surface2)'">
+                📁 Kompyuterdan
+              </label>
+              <input type="file" id="banner-file-input" accept="image/*" style="display:none" onchange="handleBannerFileUpload(event)">
+            </div>
+            <div id="img-upload-status" style="font-size:11px;color:var(--muted);margin-top:5px;"></div>
+          </div>
+          <div class="field-row">
+            <div>
+              <div class="field-label">Sarlavha rangi</div>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <input type="color" id="edit-slide-titlecolor" value="#ffffff" style="width:40px;height:38px;border-radius:8px;border:1px solid var(--border);cursor:pointer;background:transparent;" oninput="updateBannerPreview()">
+                <input class="field-input" id="edit-slide-titlecolor-hex" placeholder="#ffffff" style="flex:1" oninput="syncColorHex('titlecolor')">
+              </div>
+            </div>
+            <div>
+              <div class="field-label">Tavsif rangi</div>
+              <div style="display:flex;gap:6px;align-items:center;">
+                <input type="color" id="edit-slide-desccolor" value="#e5e7eb" style="width:40px;height:38px;border-radius:8px;border:1px solid var(--border);cursor:pointer;background:transparent;" oninput="updateBannerPreview()">
+                <input class="field-input" id="edit-slide-desccolor-hex" placeholder="#e5e7eb" style="flex:1" oninput="syncColorHex('desccolor')">
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="field-label">Badge (belgi) rangi</div>
+            <div style="display:flex;gap:6px;align-items:center;max-width:50%;">
+              <input type="color" id="edit-slide-badgecolor" value="#22c55e" style="width:40px;height:38px;border-radius:8px;border:1px solid var(--border);cursor:pointer;background:transparent;" oninput="updateBannerPreview()">
+              <input class="field-input" id="edit-slide-badgecolor-hex" placeholder="#22c55e" style="flex:1" oninput="syncColorHex('badgecolor')">
+            </div>
           </div>
           <div class="field-row">
             <div>
@@ -504,7 +547,16 @@ textarea.field-input{resize:none;min-height:80px;line-height:1.5;}
               </select>
             </div>
           </div>
-          <button class="save-btn" onclick="saveBanner()">💾 Saqlash va saytga yuborish</button>
+          <div style="display:flex;gap:10px;">
+            <button class="save-btn" onclick="saveBanner()" style="flex:1">💾 Saqlash va saytga yuborish</button>
+            <button onclick="deleteCurrentBanner()" style="
+              background:var(--red-l);border:1px solid rgba(239,68,68,.3);border-radius:10px;
+              padding:10px 18px;font-size:13px;font-weight:700;color:var(--red);cursor:pointer;
+              font-family:'Inter',sans-serif;transition:all .13s;
+            " onmouseover="this.style.background='rgba(239,68,68,.2)'" onmouseout="this.style.background='var(--red-l)'">
+              🗑️ O'chirish
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1118,48 +1170,79 @@ window.saveBozorPrices = function() {
   if(saved) { saved.classList.add('show'); setTimeout(()=>saved.classList.remove('show'),2500); }
 };
 
-// ── BANNER EDITOR (Firebase bilan to'liq ulangan) ────────
-const FALLBACK_BANNERS = [
-  {tag:"Yangilik", deco:"🌿", title:"Kumushkonda", titleEm:"20% chegirma", badge:"Aksiya · Bahor 2026", desc:"Oila bilan tashrif buyurishingizda katta chegirma!", img:"https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80", cta:"Yo\u02bbnalishni ko\u02bbrish →", ctaAction:"goEco()"},
-  {tag:"Reklama", deco:"🍢", title:"Parkent shashligi —", titleEm:"haqiqiy ta\u02bbm", badge:"Gastronomiya", desc:"30 yillik an\u02bbanaviy retsept!", img:"https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&q=80", cta:"Restoranlar →", ctaAction:"near('restaurant')"},
-  {tag:"Yangi", deco:"🌐", title:"Parkentni uydan", titleEm:"kashf eting", badge:"360° Virtual Sayohat", desc:"Bepul panorama ko\u02bbrinishlari!", img:"https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80", cta:"Boshlash →", ctaAction:"openVirtualTour()"},
-  {tag:"Xizmat", deco:"🚕", title:"Taxi 1054 —", titleEm:"tez va qulay", badge:"24/7 Parkent taxi", desc:"Istalgan manzilga. Kecha-kunduz.", img:"https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=800&q=80", cta:"Qo\u02bbng\u02bbiroq →", ctaAction:"callTaxi()"},
-  {tag:"", deco:"📢", title:"Bu joy sizning", titleEm:"reklamangiz uchun", badge:"Reklama joyi", desc:"Minglab foydalanuvchiga tanishtiring.", img:"https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800&q=80", cta:"Bog\u02bblanish →", ctaAction:""},
-];
+// ── BANNER EDITOR (to'liq Firebase + lokal rasm + rang) ──
+const FALLBACK_BANNERS = {
+  slide_1: {tag:"Yangilik", deco:"🌿", title:"Kumushkonda", titleEm:"20% chegirma", badge:"Aksiya · Bahor 2026", desc:"Oila bilan tashrif buyurishingizda katta chegirma!", img:"https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80", cta:"Yo'nalishni ko'rish →", ctaAction:"goEco()", titleColor:"#ffffff", descColor:"#e5e7eb", badgeColor:"#22c55e"},
+  slide_2: {tag:"Reklama", deco:"🍢", title:"Parkent shashligi —", titleEm:"haqiqiy ta'm", badge:"Gastronomiya", desc:"30 yillik an'anaviy retsept!", img:"https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&q=80", cta:"Restoranlar →", ctaAction:"near('restaurant')", titleColor:"#ffffff", descColor:"#e5e7eb", badgeColor:"#f59e0b"},
+  slide_3: {tag:"Yangi", deco:"🌐", title:"Parkentni uydan", titleEm:"kashf eting", badge:"360° Virtual Sayohat", desc:"Bepul panorama ko'rinishlari!", img:"https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80", cta:"Boshlash →", ctaAction:"openVirtualTour()", titleColor:"#ffffff", descColor:"#e5e7eb", badgeColor:"#3b82f6"},
+  slide_4: {tag:"Xizmat", deco:"🚕", title:"Taxi 1054 —", titleEm:"tez va qulay", badge:"24/7 Parkent taxi", desc:"Istalgan manzilga. Kecha-kunduz.", img:"https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=800&q=80", cta:"Qo'ng'iroq →", ctaAction:"callTaxi()", titleColor:"#ffffff", descColor:"#e5e7eb", badgeColor:"#22c55e"},
+  slide_5: {tag:"", deco:"📢", title:"Bu joy sizning", titleEm:"reklamangiz uchun", badge:"Reklama joyi", desc:"Minglab foydalanuvchiga tanishtiring.", img:"https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800&q=80", cta:"Bog'lanish →", ctaAction:"", titleColor:"#ffffff", descColor:"#e5e7eb", badgeColor:"#a855f7"},
+};
 
-function getBannerData(num) {
-  const key = 'slide_' + num;
-  if(LIVE_BANNERS[key]) return LIVE_BANNERS[key];
-  const idx = parseInt(num) - 1;
-  return FALLBACK_BANNERS[idx] || { tag:'', deco:'📷', title:'', titleEm:'', badge:'', desc:'', img:'', cta:'', ctaAction:'' };
+let usingFallbackBanners = true; // true bo'lsa hali Firebase'dan birorta o'qilmagan
+let currentEditingSlide = '1';
+
+function getAllBanners() {
+  // Firebase'da hech narsa bo'lmasa fallback ishlatamiz, bo'lsa faqat real ma'lumot
+  if(Object.keys(LIVE_BANNERS).length > 0) return LIVE_BANNERS;
+  return FALLBACK_BANNERS;
+}
+
+function getBannerData(key) {
+  const all = getAllBanners();
+  return all[key] || { tag:'', deco:'📷', title:'', titleEm:'', badge:'', desc:'', img:'', cta:'', ctaAction:'', titleColor:'#ffffff', descColor:'#e5e7eb', badgeColor:'#22c55e' };
 }
 
 function renderSlidelist() {
   const el = document.getElementById('slide-list');
   if(!el) return;
-  const nums = [1,2,3,4,5,6];
-  el.innerHTML = nums.map(num => {
-    const s = getBannerData(num);
-    if(!s.img && !s.title) return '';
-    const isLive = !!LIVE_BANNERS['slide_'+num];
+  const all = getAllBanners();
+  const keys = Object.keys(all).sort();
+
+  if(keys.length === 0) {
+    el.innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px;font-size:13px">Hali banner yo\u02bbq. "+ Yangi banner" tugmasini bosing.</div>';
+    populateBannerSelect([]);
+    return;
+  }
+
+  el.innerHTML = keys.map(key => {
+    const s = all[key];
+    const num = key.replace('slide_', '');
     return `
     <div class="slide-row">
       <div class="slide-num">${num}</div>
-      <img class="slide-preview" src="${s.img}" alt="" onerror="this.style.opacity=0.3">
+      <img class="slide-preview" src="${s.img}" alt="" onerror="this.style.opacity=0.2">
       <div class="slide-info">
-        <div class="slide-title-txt">${s.title || '(boʻsh)'} ${s.titleEm||''} ${isLive ? '<span style="color:var(--green);font-size:9px;font-weight:700;margin-left:6px;">●LIVE</span>' : '<span style="color:var(--muted);font-size:9px;margin-left:6px;">demo</span>'}</div>
-        <div class="slide-url-txt">${s.img||'rasm yoʻq'}</div>
+        <div class="slide-title-txt">${s.title || '(boʻsh)'} ${s.titleEm||''}</div>
+        <div class="slide-url-txt">${(s.img||'rasm yoʻq').slice(0,60)}</div>
       </div>
       <div class="slide-actions">
-        <button class="action-btn edit" onclick="loadSlideEdit(${num})">✏️</button>
+        <button class="action-btn edit" onclick="loadSlideEdit('${key}')">✏️</button>
+        <button class="action-btn del" onclick="deleteBannerByKey('${key}')">🗑️</button>
       </div>
     </div>`;
   }).join('');
+
+  populateBannerSelect(keys);
 }
 
-window.loadSlideEdit = function(num) {
-  const s = getBannerData(num);
-  setValue('edit-slide-num', num);
+function populateBannerSelect(keys) {
+  const sel = document.getElementById('edit-slide-num');
+  if(!sel) return;
+  const prevVal = sel.value;
+  sel.innerHTML = keys.map(key => {
+    const num = key.replace('slide_', '');
+    return `<option value="${key}">Banner ${num}</option>`;
+  }).join('');
+  // Joriy tahrirlanayotgan banner hali ro'yxatda bo'lsa saqlab qolamiz
+  if(keys.includes(prevVal)) sel.value = prevVal;
+  else if(keys.includes(currentEditingSlide)) sel.value = currentEditingSlide;
+}
+
+window.loadSlideEdit = function(key) {
+  currentEditingSlide = key;
+  const s = getBannerData(key);
+  setValue('edit-slide-num', key);
   setValue('edit-slide-deco', s.deco || '');
   setValue('edit-slide-tag', s.tag || '');
   setValue('edit-slide-badge', s.badge || '');
@@ -1169,10 +1252,111 @@ window.loadSlideEdit = function(num) {
   setValue('edit-slide-img', s.img || '');
   setValue('edit-slide-cta', s.cta || '');
   setValue('edit-slide-ctaaction', s.ctaAction || '');
+  setValue('edit-slide-titlecolor', s.titleColor || '#ffffff');
+  setValue('edit-slide-titlecolor-hex', s.titleColor || '#ffffff');
+  setValue('edit-slide-desccolor', s.descColor || '#e5e7eb');
+  setValue('edit-slide-desccolor-hex', s.descColor || '#e5e7eb');
+  setValue('edit-slide-badgecolor', s.badgeColor || '#22c55e');
+  setValue('edit-slide-badgecolor-hex', s.badgeColor || '#22c55e');
+  updateBannerPreview();
 };
 
+// ── Rang inputlarini matn bilan sinxronlash ──────────────
+window.syncColorHex = function(field) {
+  const hexInput = document.getElementById('edit-slide-' + field + '-hex');
+  const colorInput = document.getElementById('edit-slide-' + field);
+  let val = hexInput.value.trim();
+  if(!val.startsWith('#')) val = '#' + val;
+  if(/^#[0-9a-fA-F]{6}$/.test(val)) {
+    colorInput.value = val;
+    updateBannerPreview();
+  }
+};
+
+// Color picker o'zgarganda hex input ham yangilansin
+document.addEventListener('input', (e) => {
+  if(e.target && e.target.type === 'color' && e.target.id.startsWith('edit-slide-')) {
+    const field = e.target.id.replace('edit-slide-', '');
+    const hexEl = document.getElementById('edit-slide-' + field + '-hex');
+    if(hexEl) hexEl.value = e.target.value;
+  }
+});
+
+// ── Lokal fayl yuklash (base64) ──────────────────────────
+window.handleBannerFileUpload = function(event) {
+  const file = event.target.files[0];
+  const statusEl = document.getElementById('img-upload-status');
+  if(!file) return;
+
+  if(!file.type.startsWith('image/')) {
+    statusEl.textContent = '⚠️ Faqat rasm fayllarini tanlang';
+    statusEl.style.color = 'var(--red)';
+    return;
+  }
+
+  const maxSizeMB = 2;
+  if(file.size > maxSizeMB * 1024 * 1024) {
+    statusEl.textContent = `⚠️ Fayl juda katta (${(file.size/1024/1024).toFixed(1)}MB). Maksimal ${maxSizeMB}MB.`;
+    statusEl.style.color = 'var(--red)';
+    return;
+  }
+
+  statusEl.textContent = '⏳ Yuklanmoqda...';
+  statusEl.style.color = 'var(--muted)';
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const base64 = e.target.result;
+    document.getElementById('edit-slide-img').value = base64;
+    statusEl.textContent = '✅ Rasm tayyor (' + (file.size/1024).toFixed(0) + 'KB) — endi "Saqlash" tugmasini bosing';
+    statusEl.style.color = 'var(--green)';
+    updateBannerPreview();
+  };
+  reader.onerror = function() {
+    statusEl.textContent = '❌ Faylni o\u02bbqishda xato';
+    statusEl.style.color = 'var(--red)';
+  };
+  reader.readAsDataURL(file);
+};
+
+// ── Live preview ──────────────────────────────────────────
+window.updateBannerPreview = function() {
+  const img      = document.getElementById('edit-slide-img')?.value || '';
+  const tag      = document.getElementById('edit-slide-tag')?.value || '';
+  const badge    = document.getElementById('edit-slide-badge')?.value || '';
+  const title    = document.getElementById('edit-slide-title')?.value || 'Sarlavha';
+  const titleEm  = document.getElementById('edit-slide-titleem')?.value || '';
+  const desc     = document.getElementById('edit-slide-desc')?.value || '';
+  const titleColor = document.getElementById('edit-slide-titlecolor')?.value || '#ffffff';
+  const descColor  = document.getElementById('edit-slide-desccolor')?.value  || '#e5e7eb';
+  const badgeColor = document.getElementById('edit-slide-badgecolor')?.value || '#22c55e';
+
+  const prev = document.getElementById('banner-preview');
+  if(prev) prev.style.backgroundImage = img ? `url('${img}')` : 'none';
+
+  const bpBadge = document.getElementById('bp-badge');
+  if(bpBadge) {
+    bpBadge.textContent = badge || tag || 'Belgi';
+    bpBadge.style.background = badgeColor + '33';
+    bpBadge.style.color = badgeColor;
+    bpBadge.style.border = '1px solid ' + badgeColor + '55';
+  }
+
+  const bpTitle = document.getElementById('bp-title');
+  if(bpTitle) bpTitle.style.color = titleColor;
+  const bpTitleTxt = document.getElementById('bp-title-text');
+  if(bpTitleTxt) bpTitleTxt.textContent = title;
+
+  const bpTitleEm = document.getElementById('bp-titleem');
+  if(bpTitleEm) { bpTitleEm.textContent = titleEm; bpTitleEm.style.color = titleColor; }
+
+  const bpDesc = document.getElementById('bp-desc');
+  if(bpDesc) { bpDesc.textContent = desc || 'Tavsif matni shu yerda ko\u02bbrinadi'; bpDesc.style.color = descColor; }
+};
+
+// ── Saqlash ────────────────────────────────────────────────
 window.saveBanner = function() {
-  const num       = document.getElementById('edit-slide-num')?.value;
+  const key       = document.getElementById('edit-slide-num')?.value || currentEditingSlide;
   const deco      = document.getElementById('edit-slide-deco')?.value || '';
   const tag       = document.getElementById('edit-slide-tag')?.value || '';
   const badge     = document.getElementById('edit-slide-badge')?.value || '';
@@ -1182,41 +1366,103 @@ window.saveBanner = function() {
   const img       = document.getElementById('edit-slide-img')?.value   || '';
   const cta       = document.getElementById('edit-slide-cta')?.value   || '';
   const ctaAction = document.getElementById('edit-slide-ctaaction')?.value || '';
+  const titleColor = document.getElementById('edit-slide-titlecolor')?.value || '#ffffff';
+  const descColor  = document.getElementById('edit-slide-desccolor')?.value  || '#e5e7eb';
+  const badgeColor = document.getElementById('edit-slide-badgecolor')?.value || '#22c55e';
 
   if(!title && !img) {
     adminToast('⚠️ Kamida sarlavha yoki rasm kiriting!');
     return;
   }
 
-  const data = { deco, tag, badge, title, titleEm, desc, img, cta, ctaAction, updatedAt: Date.now() };
+  const data = { deco, tag, badge, title, titleEm, desc, img, cta, ctaAction, titleColor, descColor, badgeColor, updatedAt: Date.now() };
 
-  if(db) {
-    db.ref('banners/slide_' + num).set(data)
-      .then(() => {
-        adminToast('✅ Banner ' + num + ' saytga yuborildi!');
-      })
-      .catch((err) => {
-        adminToast('❌ Xato: Firebase ulanmadi');
-        console.error(err);
-      });
-  } else {
+  if(!db) {
     adminToast('⚠️ Firebase ulanmagan — saqlanmadi');
+    return;
   }
 
-  const saved = document.getElementById('banner-saved');
-  if(saved) { saved.classList.add('show'); setTimeout(()=>saved.classList.remove('show'),2500); }
+  // Agar rasm juda katta base64 bo'lsa ogohlantirish (Firebase RTDB cheklovi ~10MB/node, lekin amalda kichikroq saqlash tavsiya etiladi)
+  const approxSizeKB = Math.round((img.length * 0.75) / 1024);
+  if(approxSizeKB > 800) {
+    if(!confirm(`Rasm hajmi katta (~${approxSizeKB}KB). Sayt sekinroq yuklanishi mumkin. Davom etasizmi?`)) return;
+  }
+
+  db.ref('banners/' + key).set(data)
+    .then(() => {
+      adminToast('✅ Banner saytga yuborildi!');
+      const saved = document.getElementById('banner-saved');
+      if(saved) { saved.classList.add('show'); setTimeout(()=>saved.classList.remove('show'),2500); }
+    })
+    .catch((err) => {
+      adminToast('❌ Xato: ' + err.message);
+      console.error(err);
+    });
 };
 
-window.deleteBanner = function(num) {
-  if(!db) return;
-  if(!confirm('Banner ' + num + ' ni o\u02bbchirishni xohlaysizmi?')) return;
-  db.ref('banners/slide_' + num).remove()
-    .then(() => { adminToast('🗑️ Banner ' + num + ' o\u02bbchirildi'); renderSlidelist(); });
+// ── O'chirish ──────────────────────────────────────────────
+window.deleteBannerByKey = function(key) {
+  if(!db) { adminToast('⚠️ Firebase ulanmagan'); return; }
+  const num = key.replace('slide_', '');
+  if(!confirm('Banner ' + num + ' ni butunlay o\u02bbchirishni xohlaysizmi?')) return;
+  db.ref('banners/' + key).remove()
+    .then(() => {
+      adminToast('🗑️ Banner ' + num + ' o\u02bbchirildi');
+      // Agar shu banner tahrirlanayotgan bo'lsa, formani tozalaymiz
+      if(currentEditingSlide === key) {
+        const remaining = Object.keys(getAllBanners());
+        if(remaining.length > 0) loadSlideEdit(remaining[0]);
+      }
+    })
+    .catch((err) => adminToast('❌ Xato: ' + err.message));
 };
 
-window.addSlide = () => adminToast('+ Yangi banner qoʻshildi (demo)');
+window.deleteCurrentBanner = function() {
+  const key = document.getElementById('edit-slide-num')?.value;
+  if(!key) { adminToast('⚠️ Banner tanlanmagan'); return; }
+  deleteBannerByKey(key);
+};
+
+window.addSlide = function() {
+  const all = getAllBanners();
+  const existingNums = Object.keys(all).map(k => parseInt(k.replace('slide_',''))).filter(n => !isNaN(n));
+  const nextNum = existingNums.length > 0 ? Math.max(...existingNums) + 1 : 1;
+  const newKey = 'slide_' + nextNum;
+
+  currentEditingSlide = newKey;
+  setValue('edit-slide-num', newKey);
+  setValue('edit-slide-deco', '📷');
+  setValue('edit-slide-tag', '');
+  setValue('edit-slide-badge', '');
+  setValue('edit-slide-title', '');
+  setValue('edit-slide-titleem', '');
+  setValue('edit-slide-desc', '');
+  setValue('edit-slide-img', '');
+  setValue('edit-slide-cta', '');
+  setValue('edit-slide-ctaaction', '');
+  setValue('edit-slide-titlecolor', '#ffffff');
+  setValue('edit-slide-titlecolor-hex', '#ffffff');
+  setValue('edit-slide-desccolor', '#e5e7eb');
+  setValue('edit-slide-desccolor-hex', '#e5e7eb');
+  setValue('edit-slide-badgecolor', '#22c55e');
+  setValue('edit-slide-badgecolor-hex', '#22c55e');
+
+  // Selectga yangi optionni qo'shamiz (hali saqlanmagan)
+  const sel = document.getElementById('edit-slide-num');
+  if(sel && !Array.from(sel.options).some(o => o.value === newKey)) {
+    const opt = document.createElement('option');
+    opt.value = newKey;
+    opt.textContent = 'Banner ' + nextNum + ' (yangi)';
+    sel.appendChild(opt);
+    sel.value = newKey;
+  }
+
+  updateBannerPreview();
+  adminToast('📝 Yangi banner uchun ma\u02bblumot kiriting →');
+};
 
 function setValue(id, val) { const e = document.getElementById(id); if(e) e.value = val; }
+
 
 // ── SOS ──────────────────────────────────────────────────
 function loadSos() {
@@ -1249,8 +1495,19 @@ window.sendNotification = function() {
   const t = document.getElementById('notif-title').value;
   const b = document.getElementById('notif-body').value;
   if(!t || !b) { adminToast('⚠️ Sarlavha va matn kiriting!'); return; }
-  adminToast('📤 Bildirishnoma yuborildi!');
-  if(db) db.ref('notifications').push({title:t, body:b, time:Date.now()});
+  if(!db) { adminToast('❌ Firebase ulanmagan — yuborilmadi'); return; }
+
+  db.ref('notifications').push({title:t, body:b, time:Date.now()})
+    .then(() => {
+      adminToast('📤 Bildirishnoma yuborildi!');
+      document.getElementById('notif-title').value = '';
+      document.getElementById('notif-body').value = '';
+      updateNotifPreview();
+    })
+    .catch((err) => {
+      adminToast('❌ Xato: yuborilmadi (' + err.message + ')');
+      console.error('Notification error:', err);
+    });
 };
 
 // ── SERVICES ─────────────────────────────────────────────

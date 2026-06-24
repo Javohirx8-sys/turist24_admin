@@ -648,6 +648,7 @@ textarea.field-input{resize:none;min-height:80px;line-height:1.5;}
 
     <!-- ── NOTIFICATIONS ── -->
     <div class="page" id="page-notifications">
+      <!-- Yuborish formasi -->
       <div class="notif-compose">
         <div class="chart-title" style="margin-bottom:16px;">📣 Push bildirishnoma yuborish</div>
         <div class="field-row" style="margin-bottom:12px;">
@@ -658,10 +659,8 @@ textarea.field-input{resize:none;min-height:80px;line-height:1.5;}
           <div>
             <div class="field-label">Kimga yuborish</div>
             <select class="field-input" id="notif-target">
-              <option>Barcha foydalanuvchilarga</option>
-              <option>Faqat onlinelarga</option>
-              <option>Oila turi</option>
-              <option>So'nggi 7 kun faol</option>
+              <option value="all">Barcha foydalanuvchilarga</option>
+              <option value="online">Faqat onlinelarga</option>
             </select>
           </div>
         </div>
@@ -677,6 +676,25 @@ textarea.field-input{resize:none;min-height:80px;line-height:1.5;}
           </div>
         </div>
         <button class="send-btn" onclick="sendNotification()">📤 Yuborish</button>
+      </div>
+
+      <!-- Yuborilgan tarix -->
+      <div class="table-card">
+        <div class="table-hdr">
+          <div class="table-hdr-title">📋 Yuborilgan bildirishnomalar</div>
+          <button class="tb-btn" onclick="clearAllNotifs()" style="color:var(--red);border-color:rgba(239,68,68,.3)">🗑️ Hammasini tozalash</button>
+        </div>
+        <table class="table">
+          <thead><tr>
+            <th>Sarlavha</th>
+            <th>Matn</th>
+            <th>Vaqt</th>
+            <th>Amal</th>
+          </tr></thead>
+          <tbody id="notif-history-table">
+            <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px">Yuklanmoqda...</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -908,6 +926,24 @@ function initFirebase() {
     LIVE_BANNERS = snap.val() || {};
     const slideList = document.getElementById('slide-list');
     if(slideList) renderSlidelist();
+  });
+
+  // ── Bildirishnomalar tarixi ───────────────────────────
+  db.ref('notifications').limitToLast(20).on('value', snap => {
+    const data = snap.val() || {};
+    // key ni ham qo'shamiz (o'chirish uchun kerak)
+    const items = Object.entries(data)
+      .map(([key, val]) => ({ ...val, key }))
+      .sort((a,b) => (b.time||0) - (a.time||0));
+    updateNotifHistory(items);
+  });
+
+  // ── Choyxona bronlari ────────────────────────────────
+  db.ref('orders').on('value', snap => {
+    const orders = snap.val() || {};
+    const cnt = Object.keys(orders).length;
+    setText('stat-orders', cnt);
+    updateBookingsTable(orders);
   });
 }
 
@@ -1497,12 +1533,15 @@ window.sendNotification = function() {
   if(!t || !b) { adminToast('⚠️ Sarlavha va matn kiriting!'); return; }
   if(!db) { adminToast('❌ Firebase ulanmagan — yuborilmadi'); return; }
 
-  db.ref('notifications').push({title:t, body:b, time:Date.now()})
+  const newRef = db.ref('notifications').push();
+  newRef.set({ key: newRef.key, title: t, body: b, time: Date.now() })
     .then(() => {
       adminToast('📤 Bildirishnoma yuborildi!');
-      document.getElementById('notif-title').value = '';
-      document.getElementById('notif-body').value = '';
-      updateNotifPreview();
+      const titleEl = document.getElementById('notif-title');
+      const bodyEl  = document.getElementById('notif-body');
+      if(titleEl) titleEl.value = '';
+      if(bodyEl)  bodyEl.value  = '';
+      if(typeof updateNotifPreview === 'function') updateNotifPreview();
     })
     .catch((err) => {
       adminToast('❌ Xato: yuborilmadi (' + err.message + ')');
@@ -1576,6 +1615,55 @@ window.refreshAll = function() {
   renderCharts();
   if(usersData) renderActivityFromUsers(usersData);
   adminToast('🔄 Yangilandi!');
+};
+
+// ── BILDIRISHNOMALAR TARIXI ──────────────────────────────
+function updateNotifHistory(items) {
+  const tb = document.getElementById('notif-history-table');
+  if(!tb) return;
+  if(!items.length) {
+    tb.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px">Hali bildirishnoma yuborilmagan</td></tr>';
+    return;
+  }
+  tb.innerHTML = items.map(n => `
+    <tr>
+      <td style="font-weight:700">${n.title || '—'}</td>
+      <td style="color:var(--text2);font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${n.body || '—'}</td>
+      <td style="color:var(--muted);font-size:12px">${n.time ? timeAgo(n.time) : '—'}</td>
+      <td><button class="action-btn del" onclick="deleteNotif('${n.key||''}')">🗑️</button></td>
+    </tr>`).join('');
+}
+
+window.deleteNotif = function(key) {
+  if(!db || !key) return;
+  db.ref('notifications/' + key).remove()
+    .then(() => adminToast('🗑️ Bildirishnoma oʻchirildi'))
+    .catch(() => adminToast('❌ Xato'));
+};
+
+window.clearAllNotifs = function() {
+  if(!db) return;
+  if(!confirm('Barcha bildirishnomalarni oʻchirishni xohlaysizmi?')) return;
+  db.ref('notifications').remove()
+    .then(() => adminToast('✅ Bildirishnomalar tozalandi'))
+    .catch(() => adminToast('❌ Xato'));
+};
+
+// ── BRON/ORDERS JADVALI ───────────────────────────────────
+function updateBookingsTable(ordersObj) {
+  // Dashboard da stat-orders soni yangilanadi
+  // Kelajakda choyxona bron sahifasiga qo'shiladi
+  const cnt = Object.keys(ordersObj).length;
+  setText('stat-orders', cnt);
+}
+
+// ── renderCharts — usersData o'zgarganda ham qayta chizilsin ──
+// (initFirebase da users listener renderCharts chaqiradi)
+const _origUpdateOnlineUI = updateOnlineUI;
+window.updateOnlineUI = function(total, online) {
+  _origUpdateOnlineUI(total, online);
+  // Grafik yangilanishi (300ms kechikish bilan)
+  setTimeout(renderCharts, 300);
 };
 
 window.editUser = function(id) {
